@@ -2,7 +2,7 @@
 
 Name:		gperftools
 Version:	2.0
-Release:	2%{?dist}
+Release:	3%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
@@ -40,7 +40,6 @@ Libraries provided by gperftools, including libtcmalloc and libprofiler.
 
 %package -n pprof
 Summary:	CPU and Heap Profiler tool
-Requires:	%{name}-libs%{?_isa} = %{version}-%{release}
 Requires:	gv, graphviz
 BuildArch:	noarch
 Provides:	google-perftools = %{version}-%{release}
@@ -103,6 +102,9 @@ rm -rf %{buildroot}%{_docdir}/%{name}-%{version}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Tue Feb 14 2012 Tom Callaway <spot@fedoraproject.org> - 2.0-3
+- pprof doesn't actually need gperftools-libs
+
 * Tue Feb 14 2012 Tom Callaway <spot@fedoraproject.org> - 2.0-2
 - rework package so that pprof is a noarch subpackage, while still
   enforcing the ExclusiveArch for the libs
