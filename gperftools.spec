@@ -2,7 +2,7 @@
 
 Name:		gperftools
 Version:	2.0
-Release:	3%{?dist}
+Release:	4%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
@@ -23,7 +23,7 @@ a heap profiler, and a cpu-profiler.
 %package devel
 Summary:	Development libraries and headers for gperftools
 Group:		Development/Libraries
-Requires:	%{name}%{?_isa} = %{version}-%{release}
+Requires:	%{name}-libs%{?_isa} = %{version}-%{release}
 Provides:	google-perftools-devel = %{version}-%{release}
 Obsoletes:	google-perftools-devel < 2.0
 
@@ -102,6 +102,9 @@ rm -rf %{buildroot}%{_docdir}/%{name}-%{version}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Thu Feb 16 2012 Tom Callaway <spot@fedoraproject.org> - 2.0-4
+- fix bug in -devel Requires
+
 * Tue Feb 14 2012 Tom Callaway <spot@fedoraproject.org> - 2.0-3
 - pprof doesn't actually need gperftools-libs
 
