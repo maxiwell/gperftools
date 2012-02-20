@@ -2,14 +2,14 @@
 
 Name:		gperftools
 Version:	2.0
-Release:	4%{?dist}
+Release:	5%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
 URL:		http://code.google.com/p/gperftools/
 Source0:	http://gperftools.googlecode.com/files/%{name}-%{version}.tar.gz
 # ppc64 still broken, bz 238390
-ExclusiveArch:	%{ix86} x86_64 ppc
+ExclusiveArch:	%{ix86} x86_64 ppc %{arm}
 %ifnarch ppc ppc64
 BuildRequires:	libunwind-devel
 %endif
@@ -102,6 +102,9 @@ rm -rf %{buildroot}%{_docdir}/%{name}-%{version}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Mon Feb 20 2012 Peter Robinson <pbrobinson@fedoraproject.org> - 2.0-5
+- Enable ARM as a supported arch
+
 * Thu Feb 16 2012 Tom Callaway <spot@fedoraproject.org> - 2.0-4
 - fix bug in -devel Requires
 
