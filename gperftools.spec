@@ -2,7 +2,7 @@
 
 Name:		gperftools
 Version:	2.0
-Release:	5%{?dist}
+Release:	6%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
@@ -102,6 +102,9 @@ rm -rf %{buildroot}%{_docdir}/%{name}-%{version}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Thu Jul 19 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 2.0-6
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_18_Mass_Rebuild
+
 * Mon Feb 20 2012 Peter Robinson <pbrobinson@fedoraproject.org> - 2.0-5
 - Enable ARM as a supported arch
 
