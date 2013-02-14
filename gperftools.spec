@@ -2,7 +2,7 @@
 
 Name:		gperftools
 Version:	2.0
-Release:	7%{?dist}
+Release:	8%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
@@ -105,6 +105,9 @@ rm -rf %{buildroot}%{_docdir}/%{name}-%{version}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Thu Feb 14 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 2.0-8
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_19_Mass_Rebuild
+
 * Fri Aug  3 2012 Tom Callaway <spot@fedoraproject.org> - 2.0-7
 - fix compile with glibc 2.16
 
