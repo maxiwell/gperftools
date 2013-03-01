@@ -2,14 +2,14 @@
 
 Name:		gperftools
 Version:	2.0
-Release:	8%{?dist}
+Release:	9%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
 URL:		http://code.google.com/p/gperftools/
 Source0:	http://gperftools.googlecode.com/files/%{name}-%{version}.tar.gz
-# http://code.google.com/p/gperftools/issues/detail?id=444
-Patch0:		gperftools-2.0-glibc216.patch
+# Update to latest svn, since google forgets how to make releases
+Patch0:		gperftools-svn-r190.patch
 # ppc64 still broken, bz 238390
 ExclusiveArch:	%{ix86} x86_64 ppc %{arm}
 %ifnarch ppc ppc64
@@ -52,7 +52,7 @@ Pprof is a heap and CPU profiler tool, part of the gperftools suite.
 
 %prep
 %setup -q
-%patch0 -p1 -b .glibc216
+%patch0 -p1 -b .svn-r190
 
 # Fix end-of-line encoding
 sed -i 's/\r//' README_windows.txt
@@ -105,6 +105,9 @@ rm -rf %{buildroot}%{_docdir}/%{name}-%{version}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Fri Mar  1 2013 Tom Callaway <spot@fedoraproject.org> - 2.0-9
+- update to svn r190 (because google can't make releases)
+
 * Thu Feb 14 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 2.0-8
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_19_Mass_Rebuild
 
