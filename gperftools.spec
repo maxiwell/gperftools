@@ -2,7 +2,7 @@
 
 Name:		gperftools
 Version:	2.0
-Release:	9%{?dist}
+Release:	10%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
@@ -10,8 +10,7 @@ URL:		http://code.google.com/p/gperftools/
 Source0:	http://gperftools.googlecode.com/files/%{name}-%{version}.tar.gz
 # Update to latest svn, since google forgets how to make releases
 Patch0:		gperftools-svn-r190.patch
-# ppc64 still broken, bz 238390
-ExclusiveArch:	%{ix86} x86_64 ppc %{arm}
+ExclusiveArch:	%{ix86} x86_64 ppc ppc64 %{arm}
 %ifnarch ppc ppc64
 BuildRequires:	libunwind-devel
 %endif
@@ -105,6 +104,9 @@ rm -rf %{buildroot}%{_docdir}/%{name}-%{version}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Thu Mar 14 2013 Dan Horák <dan[at]danny.cz> - 2.0-10
+- build on ppc64 as well
+
 * Fri Mar  1 2013 Tom Callaway <spot@fedoraproject.org> - 2.0-9
 - update to svn r190 (because google can't make releases)
 
