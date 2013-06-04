@@ -2,7 +2,7 @@
 
 Name:		gperftools
 Version:	2.0
-Release:	10%{?dist}
+Release:	11%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
@@ -10,16 +10,23 @@ URL:		http://code.google.com/p/gperftools/
 Source0:	http://gperftools.googlecode.com/files/%{name}-%{version}.tar.gz
 # Update to latest svn, since google forgets how to make releases
 Patch0:		gperftools-svn-r190.patch
+Patch1:		gperftools-2.0-svn190-to-svn218.patch
 ExclusiveArch:	%{ix86} x86_64 ppc ppc64 %{arm}
 %ifnarch ppc ppc64
 BuildRequires:	libunwind-devel
 %endif
+BuildRequires:	autoconf, automake, libtool
+Requires:	gperftools-devel = %{version}-%{release}
+Requires:	pprof = %{version}-%{release}
 
 %description
 Perf Tools is a collection of performance analysis tools, including a 
 high-performance multi-threaded malloc() implementation that works
 particularly well with threads and STL, a thread-friendly heap-checker,
 a heap profiler, and a cpu-profiler.
+
+This is a metapackage which pulls in all of the gperftools (and pprof)
+binaries, libraries, and development headers, so that you can use them.
 
 %package devel
 Summary:	Development libraries and headers for gperftools
@@ -52,6 +59,7 @@ Pprof is a heap and CPU profiler tool, part of the gperftools suite.
 %prep
 %setup -q
 %patch0 -p1 -b .svn-r190
+%patch1 -p1 -b .svn-r218
 
 # Fix end-of-line encoding
 sed -i 's/\r//' README_windows.txt
@@ -59,8 +67,10 @@ sed -i 's/\r//' README_windows.txt
 # No need to have exec permissions on source code
 chmod -x src/sampler.h src/sampler.cc
 
+autoreconf -i
+
 %build
-CXXFLAGS=`echo $RPM_OPT_FLAGS -DTCMALLOC_LARGE_PAGES| sed -e 's/-Wp,-D_FORTIFY_SOURCE=2//g'`
+CXXFLAGS=`echo $RPM_OPT_FLAGS -fno-strict-aliasing -Wno-unused-local-typedefs -DTCMALLOC_LARGE_PAGES| sed -e 's/-Wp,-D_FORTIFY_SOURCE=2//g'`
 %configure --disable-static 
 
 # Bad rpath!
@@ -82,12 +92,14 @@ rm -rf %{buildroot}%{_docdir}/%{name}-%{version}/INSTALL
 %check
 # http://code.google.com/p/google-perftools/issues/detail?id=153
 %ifnarch ppc
-# Their test suite is junk. Disabling.
+# Their test suite is almost always broken.
 # LD_LIBRARY_PATH=./.libs make check
 %endif
 
 %post libs -p /sbin/ldconfig
 %postun libs -p /sbin/ldconfig
+
+%files
 
 %files -n pprof
 %{_bindir}/pprof
@@ -104,6 +116,11 @@ rm -rf %{buildroot}%{_docdir}/%{name}-%{version}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Tue Jun  4 2013 Tom Callaway <spot@fedoraproject.org> - 2.0-11
+- pass -fno-strict-aliasing
+- create "gperftools" metapackage.
+- update to svn r218 (cleanups, some ARM fixes)
+
 * Thu Mar 14 2013 Dan Horák <dan[at]danny.cz> - 2.0-10
 - build on ppc64 as well
 
