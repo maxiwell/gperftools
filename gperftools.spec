@@ -2,7 +2,7 @@
 
 Name:		gperftools
 Version:	2.0
-Release:	11%{?dist}
+Release:	12%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
@@ -116,6 +116,9 @@ rm -rf %{buildroot}%{_docdir}/%{name}-%{version}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Wed Jul 17 2013 Petr Pisar <ppisar@redhat.com> - 2.0-12
+- Perl 5.18 rebuild
+
 * Tue Jun  4 2013 Tom Callaway <spot@fedoraproject.org> - 2.0-11
 - pass -fno-strict-aliasing
 - create "gperftools" metapackage.
