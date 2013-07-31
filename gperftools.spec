@@ -1,16 +1,13 @@
 # This package used to be called "google-perftools", but it was renamed on 2012-02-03.
 
 Name:		gperftools
-Version:	2.0
-Release:	12%{?dist}
+Version:	2.1
+Release:	1%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
 URL:		http://code.google.com/p/gperftools/
 Source0:	http://gperftools.googlecode.com/files/%{name}-%{version}.tar.gz
-# Update to latest svn, since google forgets how to make releases
-Patch0:		gperftools-svn-r190.patch
-Patch1:		gperftools-2.0-svn190-to-svn218.patch
 ExclusiveArch:	%{ix86} x86_64 ppc ppc64 %{arm}
 %ifnarch ppc ppc64
 BuildRequires:	libunwind-devel
@@ -58,8 +55,6 @@ Pprof is a heap and CPU profiler tool, part of the gperftools suite.
 
 %prep
 %setup -q
-%patch0 -p1 -b .svn-r190
-%patch1 -p1 -b .svn-r218
 
 # Fix end-of-line encoding
 sed -i 's/\r//' README_windows.txt
@@ -70,7 +65,8 @@ chmod -x src/sampler.h src/sampler.cc
 autoreconf -i
 
 %build
-CXXFLAGS=`echo $RPM_OPT_FLAGS -fno-strict-aliasing -Wno-unused-local-typedefs -DTCMALLOC_LARGE_PAGES| sed -e 's/-Wp,-D_FORTIFY_SOURCE=2//g'`
+CFLAGS=`echo $RPM_OPT_FLAGS -fno-strict-aliasing -Wno-unused-local-typedefs -DTCMALLOC_LARGE_PAGES | sed -e 's/-Wp,-D_FORTIFY_SOURCE=2//g' | sed -e 's|-fexceptions||g'`
+CXXFLAGS=`echo $RPM_OPT_FLAGS -fno-strict-aliasing -Wno-unused-local-typedefs -DTCMALLOC_LARGE_PAGES | sed -e 's/-Wp,-D_FORTIFY_SOURCE=2//g' | sed -e 's|-fexceptions||g'`
 %configure --disable-static 
 
 # Bad rpath!
@@ -116,6 +112,10 @@ rm -rf %{buildroot}%{_docdir}/%{name}-%{version}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Wed Jul 31 2013 Tom Callaway <spot@fedoraproject.org> - 2.1-1
+- update to 2.1 (fixes arm)
+- disable -fexceptions, as that breaks things on el6, possibly arm
+
 * Wed Jul 17 2013 Petr Pisar <ppisar@redhat.com> - 2.0-12
 - Perl 5.18 rebuild
 
