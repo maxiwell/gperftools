@@ -2,7 +2,7 @@
 
 Name:		gperftools
 Version:	2.1
-Release:	1%{?dist}
+Release:	2%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
@@ -112,6 +112,9 @@ rm -rf %{buildroot}%{_docdir}/%{name}-%{version}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Sat Aug 03 2013 Petr Pisar <ppisar@redhat.com> - 2.1-2
+- Perl 5.18 rebuild
+
 * Wed Jul 31 2013 Tom Callaway <spot@fedoraproject.org> - 2.1-1
 - update to 2.1 (fixes arm)
 - disable -fexceptions, as that breaks things on el6, possibly arm
