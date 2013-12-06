@@ -1,8 +1,10 @@
 # This package used to be called "google-perftools", but it was renamed on 2012-02-03.
 
+%{!?_pkgdocdir: %global _pkgdocdir %{_docdir}/%{name}-%{version}}
+
 Name:		gperftools
 Version:	2.1
-Release:	2%{?dist}
+Release:	3%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
@@ -76,14 +78,11 @@ sed -i 's|^runpath_var=LD_RUN_PATH|runpath_var=DIE_RPATH_DIE|g' libtool
 make 
 
 %install
-make DESTDIR=%{buildroot} docdir=%{_docdir}/%{name}-%{version}/ install
+make DESTDIR=%{buildroot} docdir=%{_pkgdocdir}/ install
 find %{buildroot} -type f -name "*.la" -exec rm -f {} ';'
 
-# Zero files
-rm -rf %{buildroot}%{_docdir}/%{name}-%{version}/NEWS
-
 # Delete useless files
-rm -rf %{buildroot}%{_docdir}/%{name}-%{version}/INSTALL
+rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 
 %check
 # http://code.google.com/p/google-perftools/issues/detail?id=153
@@ -102,7 +101,7 @@ rm -rf %{buildroot}%{_docdir}/%{name}-%{version}/INSTALL
 %{_mandir}/man1/*
 
 %files devel
-%{_docdir}/%{name}-%{version}/
+%{_pkgdocdir}/
 %{_includedir}/google/
 %{_includedir}/gperftools/
 %{_libdir}/*.so
@@ -112,6 +111,10 @@ rm -rf %{buildroot}%{_docdir}/%{name}-%{version}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Fri Dec  6 2013 Ville Skyttä <ville.skytta@iki.fi> - 2.1-3
+- Install docs to %%{_pkgdocdir} where available (#993798), include NEWS.
+- Fix bogus date in %%changelog.
+
 * Sat Aug 03 2013 Petr Pisar <ppisar@redhat.com> - 2.1-2
 - Perl 5.18 rebuild
 
@@ -272,7 +275,7 @@ rm -rf %{buildroot}%{_docdir}/%{name}-%{version}/INSTALL
 * Mon Apr 23 2007 Tom "spot" Callaway <tcallawa@redhat.com> 0.91-1
 - alright, lets see if this works now.
 
-* Wed Oct 13 2005 Tom "spot" Callaway <tcallawa@redhat.com> 0.3-2
+* Wed Oct 12 2005 Tom "spot" Callaway <tcallawa@redhat.com> 0.3-2
 - change group to Development/Tools
 
 * Mon Oct 10 2005 Tom "spot" Callaway <tcallawa@redhat.com> 0.3-1
