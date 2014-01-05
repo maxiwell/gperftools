@@ -4,7 +4,7 @@
 
 Name:		gperftools
 Version:	2.1
-Release:	3%{?dist}
+Release:	4%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
@@ -67,8 +67,8 @@ chmod -x src/sampler.h src/sampler.cc
 autoreconf -i
 
 %build
-CFLAGS=`echo $RPM_OPT_FLAGS -fno-strict-aliasing -Wno-unused-local-typedefs -DTCMALLOC_LARGE_PAGES | sed -e 's/-Wp,-D_FORTIFY_SOURCE=2//g' | sed -e 's|-fexceptions||g'`
-CXXFLAGS=`echo $RPM_OPT_FLAGS -fno-strict-aliasing -Wno-unused-local-typedefs -DTCMALLOC_LARGE_PAGES | sed -e 's/-Wp,-D_FORTIFY_SOURCE=2//g' | sed -e 's|-fexceptions||g'`
+CFLAGS=`echo $RPM_OPT_FLAGS -fno-strict-aliasing -Wno-unused-local-typedefs -DTCMALLOC_LARGE_PAGES | sed -e 's|-fexceptions||g'`
+CXXFLAGS=`echo $RPM_OPT_FLAGS -fno-strict-aliasing -Wno-unused-local-typedefs -DTCMALLOC_LARGE_PAGES | sed -e 's|-fexceptions||g'`
 %configure --disable-static 
 
 # Bad rpath!
@@ -111,6 +111,9 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Sat Jan  4 2014 Tom Callaway <spot@fedoraproject.org> - 2.1-4
+- re-enable FORTIFY_SOURCE
+
 * Fri Dec  6 2013 Ville Skyttä <ville.skytta@iki.fi> - 2.1-3
 - Install docs to %%{_pkgdocdir} where available (#993798), include NEWS.
 - Fix bogus date in %%changelog.
