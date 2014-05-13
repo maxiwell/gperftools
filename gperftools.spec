@@ -4,14 +4,14 @@
 
 Name:		gperftools
 Version:	2.1
-Release:	4%{?dist}
+Release:	5%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
 URL:		http://code.google.com/p/gperftools/
 Source0:	http://gperftools.googlecode.com/files/%{name}-%{version}.tar.gz
-ExclusiveArch:	%{ix86} x86_64 ppc ppc64 %{arm}
-%ifnarch ppc ppc64
+ExclusiveArch:	%{ix86} x86_64 ppc %{power64} %{arm}
+%ifnarch ppc %{power64}
 BuildRequires:	libunwind-devel
 %endif
 BuildRequires:	autoconf, automake, libtool
@@ -111,6 +111,9 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Tue May 13 2014 Jaromir Capik <jcapik@redhat.com> - 2.1-5
+- Replacing ppc64 with the power64 macro (#1077632)
+
 * Sat Jan  4 2014 Tom Callaway <spot@fedoraproject.org> - 2.1-4
 - re-enable FORTIFY_SOURCE
 
