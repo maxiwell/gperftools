@@ -3,18 +3,17 @@
 %{!?_pkgdocdir: %global _pkgdocdir %{_docdir}/%{name}-%{version}}
 
 Name:		gperftools
-Version:	2.1
-Release:	5%{?dist}
+Version:	2.2
+Release:	1%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
 URL:		http://code.google.com/p/gperftools/
-Source0:	http://gperftools.googlecode.com/files/%{name}-%{version}.tar.gz
-ExclusiveArch:	%{ix86} x86_64 ppc %{power64} %{arm}
+Source0:	https://googledrive.com/host/0B6NtGsLhIcf7MWxMMF9JdTN3UVk/%{name}-%{version}.tar.gz
+ExcludeArch:	s390 s390x
 %ifnarch ppc %{power64}
 BuildRequires:	libunwind-devel
 %endif
-BuildRequires:	autoconf, automake, libtool
 Requires:	gperftools-devel = %{version}-%{release}
 Requires:	pprof = %{version}-%{release}
 
@@ -62,9 +61,7 @@ Pprof is a heap and CPU profiler tool, part of the gperftools suite.
 sed -i 's/\r//' README_windows.txt
 
 # No need to have exec permissions on source code
-chmod -x src/sampler.h src/sampler.cc
-
-autoreconf -i
+chmod -x src/*.h src/*.cc
 
 %build
 CFLAGS=`echo $RPM_OPT_FLAGS -fno-strict-aliasing -Wno-unused-local-typedefs -DTCMALLOC_LARGE_PAGES | sed -e 's|-fexceptions||g'`
@@ -111,6 +108,10 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Wed Jun  4 2014 Peter Robinson <pbrobinson@fedoraproject.org> 2.2-1
+- Update to new upstream 2.2 release
+- Add support for new arches (aarch64, ppc64le, mips)
+
 * Tue May 13 2014 Jaromir Capik <jcapik@redhat.com> - 2.1-5
 - Replacing ppc64 with the power64 macro (#1077632)
 
