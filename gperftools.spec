@@ -4,7 +4,7 @@
 
 Name:		gperftools
 Version:	2.2.1
-Release:	1%{?dist}
+Release:	2%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
@@ -108,6 +108,9 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Sat Aug 16 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 2.2.1-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_21_22_Mass_Rebuild
+
 * Thu Jul 10 2014 Dan Horák <dan[at]danny.cz> -  2.2.1-1
 - Update to new upstream 2.2.1 release
 - Fixes build on ppc arches
