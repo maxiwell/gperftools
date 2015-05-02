@@ -4,7 +4,7 @@
 
 Name:		gperftools
 Version:	2.4
-Release:	1%{?dist}
+Release:	2%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
@@ -108,6 +108,9 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Sat May 02 2015 Kalev Lember <kalevlember@gmail.com> - 2.4-2
+- Rebuilt for GCC 5 C++11 ABI change
+
 * Fri Mar 27 2015 Tom Callaway <spot@fedoraproject.org> 2.4-1
 - update to 2.4
 
