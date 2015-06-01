@@ -4,12 +4,13 @@
 
 Name:		gperftools
 Version:	2.4
-Release:	2%{?dist}
+Release:	3%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
 URL:		http://code.google.com/p/gperftools/
 Source0:	https://googledrive.com/host/0B6NtGsLhIcf7MWxMMF9JdTN3UVk/%{name}-%{version}.tar.gz
+Patch0:		gperftools-arm-has-futex.patch
 ExcludeArch:	s390 s390x
 %ifnarch ppc %{power64}
 BuildRequires:	libunwind-devel
@@ -56,6 +57,7 @@ Pprof is a heap and CPU profiler tool, part of the gperftools suite.
 
 %prep
 %setup -q
+%patch0 -p1 -b .armfutex
 
 # Fix end-of-line encoding
 sed -i 's/\r//' README_windows.txt
@@ -108,6 +110,9 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Mon Jun  1 2015 Tom Callaway <spot@fedoraproject.org> - 2.4-3
+- enable futex for ARM
+
 * Sat May 02 2015 Kalev Lember <kalevlember@gmail.com> - 2.4-2
 - Rebuilt for GCC 5 C++11 ABI change
 
