@@ -4,12 +4,13 @@
 
 Name:		gperftools
 Version:	2.4
-Release:	3%{?dist}
+Release:	4%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
 URL:		http://code.google.com/p/gperftools/
 Source0:	https://googledrive.com/host/0B6NtGsLhIcf7MWxMMF9JdTN3UVk/%{name}-%{version}.tar.gz
+# https://code.google.com/p/gperftools/issues/detail?id=693
 Patch0:		gperftools-arm-has-futex.patch
 ExcludeArch:	s390 s390x
 %ifnarch ppc %{power64}
@@ -110,6 +111,9 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Tue Jun  9 2015 Tom Callaway <spot@fedoraproject.org> - 2.4-4
+- fix modern futex handling (thanks to Paolo Bonzini)
+
 * Mon Jun  1 2015 Tom Callaway <spot@fedoraproject.org> - 2.4-3
 - enable futex for ARM
 
