@@ -4,7 +4,7 @@
 
 Name:		gperftools
 Version:	2.4
-Release:	4%{?dist}
+Release:	5%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
@@ -111,6 +111,9 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Wed Jun 17 2015 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 2.4-5
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_23_Mass_Rebuild
+
 * Tue Jun  9 2015 Tom Callaway <spot@fedoraproject.org> - 2.4-4
 - fix modern futex handling (thanks to Paolo Bonzini)
 
