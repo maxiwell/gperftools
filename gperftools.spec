@@ -3,15 +3,13 @@
 %{!?_pkgdocdir: %global _pkgdocdir %{_docdir}/%{name}-%{version}}
 
 Name:		gperftools
-Version:	2.4
-Release:	5%{?dist}
+Version:	2.4.90
+Release:	1%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
 URL:		http://code.google.com/p/gperftools/
 Source0:	https://googledrive.com/host/0B6NtGsLhIcf7MWxMMF9JdTN3UVk/%{name}-%{version}.tar.gz
-# https://code.google.com/p/gperftools/issues/detail?id=693
-Patch0:		gperftools-arm-has-futex.patch
 ExcludeArch:	s390 s390x
 %ifnarch ppc %{power64}
 BuildRequires:	libunwind-devel
@@ -58,7 +56,6 @@ Pprof is a heap and CPU profiler tool, part of the gperftools suite.
 
 %prep
 %setup -q
-%patch0 -p1 -b .armfutex
 
 # Fix end-of-line encoding
 sed -i 's/\r//' README_windows.txt
@@ -111,6 +108,9 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Mon Feb 22 2016 Tom Callaway <spot@fedoraproject.org> - 2.4.90-1
+- update to 2.4.90
+
 * Wed Jun 17 2015 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 2.4-5
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_23_Mass_Rebuild
 
