@@ -1,6 +1,6 @@
 # This package used to be called "google-perftools", but it was renamed on 2012-02-03.
 
-%ifarch %{arm}
+%ifarch %{arm} ppc64 ppc64le
 # This causes any program to segfault at startup.  The reason is not
 # understood.  Please see discussion this bug:
 # https://bugzilla.redhat.com/show_bug.cgi?id=1312462
@@ -11,7 +11,7 @@
 
 Name:		gperftools
 Version:	2.4.90
-Release:	2%{?dist}
+Release:	3%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
@@ -115,6 +115,9 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Fri Mar 04 2016 Than Ngo <than@redhat.com> - 2.4.90-3
+- Disable hardened build on ppc64/ppc64le (RHBZ#1314483).
+
 * Mon Feb 29 2016 Richard W.M. Jones <rjones@redhat.com> - 2.4.90-2
 - Disable hardened build on 32 bit ARM (RHBZ#1312462).
 
