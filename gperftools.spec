@@ -1,22 +1,15 @@
 # This package used to be called "google-perftools", but it was renamed on 2012-02-03.
 
-%ifarch %{arm} ppc64 ppc64le
-# This causes any program to segfault at startup.  The reason is not
-# understood.  Please see discussion this bug:
-# https://bugzilla.redhat.com/show_bug.cgi?id=1312462
-%undefine _hardened_build
-%endif
-
 %{!?_pkgdocdir: %global _pkgdocdir %{_docdir}/%{name}-%{version}}
 
 Name:		gperftools
-Version:	2.4.90
-Release:	3%{?dist}
+Version:	2.4.91
+Release:	1%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
-URL:		http://code.google.com/p/gperftools/
-Source0:	https://googledrive.com/host/0B6NtGsLhIcf7MWxMMF9JdTN3UVk/%{name}-%{version}.tar.gz
+URL:		https://github.com/gperftools/gperftools
+Source0:	https://github.com/gperftools/gperftools/releases/download/%{name}-%{version}/%{name}-%{version}.tar.gz
 ExcludeArch:	s390 s390x
 %ifnarch ppc %{power64}
 BuildRequires:	libunwind-devel
@@ -115,6 +108,10 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Tue Mar  8 2016 Tom Callaway <spot@fedoraproject.org> - 2.4.91-1
+- update to 2.4.91
+- re-enable hardened builds (upstream disabled dynamic sized delete by default)
+
 * Fri Mar 04 2016 Than Ngo <than@redhat.com> - 2.4.90-3
 - Disable hardened build on ppc64/ppc64le (RHBZ#1314483).
 
