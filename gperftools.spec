@@ -3,7 +3,7 @@
 %{!?_pkgdocdir: %global _pkgdocdir %{_docdir}/%{name}-%{version}}
 
 Name:		gperftools
-Version:	2.4.91
+Version:	2.5
 Release:	1%{?dist}
 License:	BSD
 Group:		Development/Tools
@@ -108,6 +108,9 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Tue Apr 26 2016 Tom Callaway <spot@fedoraproject.org> - 2.5-1
+- update to 2.5
+
 * Tue Mar  8 2016 Tom Callaway <spot@fedoraproject.org> - 2.4.91-1
 - update to 2.4.91
 - re-enable hardened builds (upstream disabled dynamic sized delete by default)
