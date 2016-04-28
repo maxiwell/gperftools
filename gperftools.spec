@@ -4,16 +4,15 @@
 
 Name:		gperftools
 Version:	2.5
-Release:	1%{?dist}
+Release:	2%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
 URL:		https://github.com/gperftools/gperftools
 Source0:	https://github.com/gperftools/gperftools/releases/download/%{name}-%{version}/%{name}-%{version}.tar.gz
 ExcludeArch:	s390 s390x
-%ifnarch ppc %{power64}
+
 BuildRequires:	libunwind-devel
-%endif
 Requires:	gperftools-devel = %{version}-%{release}
 Requires:	pprof = %{version}-%{release}
 
@@ -108,6 +107,9 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Thu Apr 28 2016 Peter Robinson <pbrobinson@fedoraproject.org> 2.5-2
+- Power64 has libunwind now
+
 * Tue Apr 26 2016 Tom Callaway <spot@fedoraproject.org> - 2.5-1
 - update to 2.5
 
