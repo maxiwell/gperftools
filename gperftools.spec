@@ -13,6 +13,7 @@ Source0:	https://github.com/gperftools/gperftools/releases/download/%{name}-%{ve
 ExcludeArch:	s390 s390x
 
 BuildRequires:	libunwind-devel
+BuildRequires:	perl-generators
 Requires:	gperftools-devel = %{version}-%{release}
 Requires:	pprof = %{version}-%{release}
 
