@@ -4,7 +4,7 @@
 
 Name:		gperftools
 Version:	2.5
-Release:	3%{?dist}
+Release:	4%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
@@ -108,6 +108,9 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Fri Feb 10 2017 Fedora Release Engineering <releng@fedoraproject.org> - 2.5-4
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_26_Mass_Rebuild
+
 * Thu Jan 12 2017 Tom Callaway <spot@fedoraproject.org> - 2.5-3
 - enable s390x
 
