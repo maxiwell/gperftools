@@ -4,7 +4,7 @@
 
 Name:		gperftools
 Version:	2.5
-Release:	4%{?dist}
+Release:	5%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
@@ -12,7 +12,9 @@ URL:		https://github.com/gperftools/gperftools
 Source0:	https://github.com/gperftools/gperftools/releases/download/%{name}-%{version}/%{name}-%{version}.tar.gz
 ExcludeArch:	s390
 
+%ifnarch s390x
 BuildRequires:	libunwind-devel
+%endif
 BuildRequires:	perl-generators
 Requires:	gperftools-devel = %{version}-%{release}
 Requires:	pprof = %{version}-%{release}
@@ -108,6 +110,9 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Tue Feb 21 2017 Dan Horák <dan[at]danny.cz> - 2.5-5
+- fix s390x build
+
 * Fri Feb 10 2017 Fedora Release Engineering <releng@fedoraproject.org> - 2.5-4
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_26_Mass_Rebuild
 
