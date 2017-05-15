@@ -3,8 +3,8 @@
 %{!?_pkgdocdir: %global _pkgdocdir %{_docdir}/%{name}-%{version}}
 
 Name:		gperftools
-Version:	2.5
-Release:	5%{?dist}
+Version:	2.5.91
+Release:	1%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
@@ -110,6 +110,9 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Mon May 15 2017 Tom Callaway <spot@fedoraproject.org> - 2.5.91-1
+- update to 2.5.91
+
 * Tue Feb 21 2017 Dan Horák <dan[at]danny.cz> - 2.5-5
 - fix s390x build
 
