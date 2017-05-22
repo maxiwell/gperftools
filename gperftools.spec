@@ -4,7 +4,7 @@
 
 Name:		gperftools
 Version:	2.5.91
-Release:	1%{?dist}
+Release:	2%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
@@ -110,6 +110,9 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Mon May 22 2017 Richard W.M. Jones <rjones@redhat.com> - 2.5.91-2
+- Bump release and rebuild to try to fix _ZdlPvm symbol (see RHBZ#1452813).
+
 * Mon May 15 2017 Tom Callaway <spot@fedoraproject.org> - 2.5.91-1
 - update to 2.5.91
 
