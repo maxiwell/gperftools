@@ -3,8 +3,8 @@
 %{!?_pkgdocdir: %global _pkgdocdir %{_docdir}/%{name}-%{version}}
 
 Name:		gperftools
-Version:	2.5.91
-Release:	2%{?dist}
+Version:	2.5.92
+Release:	1%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
@@ -68,7 +68,11 @@ chmod -x src/*.h src/*.cc
 %build
 CFLAGS=`echo $RPM_OPT_FLAGS -fno-strict-aliasing -Wno-unused-local-typedefs -DTCMALLOC_LARGE_PAGES | sed -e 's|-fexceptions||g'`
 CXXFLAGS=`echo $RPM_OPT_FLAGS -fno-strict-aliasing -Wno-unused-local-typedefs -DTCMALLOC_LARGE_PAGES | sed -e 's|-fexceptions||g'`
-%configure --disable-static 
+%configure \
+%ifarch %{power64}
+	--disable-dynamic-sized-delete-support \
+%endif
+	--disable-static 
 
 # Bad rpath!
 sed -i 's|^hardcode_libdir_flag_spec=.*|hardcode_libdir_flag_spec=""|g' libtool
@@ -110,6 +114,10 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Mon May 22 2017 Tom Callaway <spot@fedoraproject.org> - 2.5.92-1
+- update to 2.5.92
+- disable dynamic sized delete support on powerpc64
+
 * Mon May 22 2017 Richard W.M. Jones <rjones@redhat.com> - 2.5.91-2
 - Bump release and rebuild to try to fix _ZdlPvm symbol (see RHBZ#1452813).
 
