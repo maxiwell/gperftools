@@ -3,7 +3,7 @@
 %{!?_pkgdocdir: %global _pkgdocdir %{_docdir}/%{name}-%{version}}
 
 Name:		gperftools
-Version:	2.5.92
+Version:	2.5.93
 Release:	1%{?dist}
 License:	BSD
 Group:		Development/Tools
@@ -69,9 +69,7 @@ chmod -x src/*.h src/*.cc
 CFLAGS=`echo $RPM_OPT_FLAGS -fno-strict-aliasing -Wno-unused-local-typedefs -DTCMALLOC_LARGE_PAGES | sed -e 's|-fexceptions||g'`
 CXXFLAGS=`echo $RPM_OPT_FLAGS -fno-strict-aliasing -Wno-unused-local-typedefs -DTCMALLOC_LARGE_PAGES | sed -e 's|-fexceptions||g'`
 %configure \
-%ifarch %{power64}
 	--disable-dynamic-sized-delete-support \
-%endif
 	--disable-static 
 
 # Bad rpath!
@@ -114,6 +112,10 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Tue May 23 2017 Tom Callaway <spot@fedoraproject.org> - 2.5.93-1
+- update to 2.5.93
+- disable dynamic sized delete (explicitly) always
+
 * Mon May 22 2017 Tom Callaway <spot@fedoraproject.org> - 2.5.92-1
 - update to 2.5.92
 - disable dynamic sized delete support on powerpc64
