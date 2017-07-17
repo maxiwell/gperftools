@@ -3,7 +3,7 @@
 %{!?_pkgdocdir: %global _pkgdocdir %{_docdir}/%{name}-%{version}}
 
 Name:		gperftools
-Version:	2.5.93
+Version:	2.6.1
 Release:	1%{?dist}
 License:	BSD
 Group:		Development/Tools
@@ -112,6 +112,9 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Mon Jul 17 2017 Tom Callaway <spot@fedoraproject.org> - 2.6.1-1
+- update to 2.6.1
+
 * Tue May 23 2017 Tom Callaway <spot@fedoraproject.org> - 2.5.93-1
 - update to 2.5.93
 - disable dynamic sized delete (explicitly) always
