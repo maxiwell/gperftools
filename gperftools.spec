@@ -10,6 +10,8 @@ Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
 URL:		https://github.com/gperftools/gperftools
 Source0:	https://github.com/gperftools/gperftools/releases/download/%{name}-%{version}/%{name}-%{version}.tar.gz
+# There is no ucontext typedef on ppc64, at least not in rawhide.
+Patch0:		gperftools-2.6.1-ppc64-ucontext-fix.patch
 ExcludeArch:	s390
 
 %ifnarch s390x
@@ -58,6 +60,7 @@ Pprof is a heap and CPU profiler tool, part of the gperftools suite.
 
 %prep
 %setup -q
+%patch0 -p1 -b .ucontextfix
 
 # Fix end-of-line encoding
 sed -i 's/\r//' README_windows.txt
