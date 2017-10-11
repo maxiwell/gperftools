@@ -4,7 +4,7 @@
 
 Name:		gperftools
 Version:	2.6.1
-Release:	3%{?dist}
+Release:	5%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
@@ -12,12 +12,18 @@ URL:		https://github.com/gperftools/gperftools
 Source0:	https://github.com/gperftools/gperftools/releases/download/%{name}-%{version}/%{name}-%{version}.tar.gz
 # There is no ucontext typedef on ppc64, at least not in rawhide.
 Patch0:		gperftools-2.6.1-ppc64-ucontext-fix.patch
+# Conditionalize generic dynamic tls model
+Patch1:		gperftools-2.6.1-disable-generic-dynamic-tls.patch
+# Add support for C11 aligned_alloc
+# https://github.com/gperftools/gperftools/commit/d406f228
+Patch2:		gperftools-2.6.1-aligned_alloc.patch
 ExcludeArch:	s390
 
 %ifnarch s390x
 BuildRequires:	libunwind-devel
 %endif
 BuildRequires:	perl-generators
+BuildRequires:	autoconf, automake, libtool
 Requires:	gperftools-devel = %{version}-%{release}
 Requires:	pprof = %{version}-%{release}
 
@@ -61,6 +67,8 @@ Pprof is a heap and CPU profiler tool, part of the gperftools suite.
 %prep
 %setup -q
 %patch0 -p1 -b .ucontextfix
+%patch1 -p1 -b .dynload
+%patch2 -p1 -b .aa
 
 # Fix end-of-line encoding
 sed -i 's/\r//' README_windows.txt
@@ -68,10 +76,15 @@ sed -i 's/\r//' README_windows.txt
 # No need to have exec permissions on source code
 chmod -x src/*.h src/*.cc
 
+autoreconf -ifv
+
 %build
 CFLAGS=`echo $RPM_OPT_FLAGS -fno-strict-aliasing -Wno-unused-local-typedefs -DTCMALLOC_LARGE_PAGES | sed -e 's|-fexceptions||g'`
 CXXFLAGS=`echo $RPM_OPT_FLAGS -fno-strict-aliasing -Wno-unused-local-typedefs -DTCMALLOC_LARGE_PAGES | sed -e 's|-fexceptions||g'`
 %configure \
+%ifarch s390x aarch64
+	--disable-general-dynamic-tls \
+%endif
 	--disable-dynamic-sized-delete-support \
 	--disable-static 
 
@@ -115,6 +128,13 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Wed Oct 11 2017 Tom Callaway <spot@fedoraproject.org> - 2.6.1-5
+- add aligned_alloc support
+
+* Thu Aug 24 2017 Tom Callaway <spot@fedoraproject.org> - 2.6.1-4
+- add configure option to disable generic dynamic tls model
+- disable generic dynamic tls model on s390x and aarch64
+
 * Wed Aug 02 2017 Fedora Release Engineering <releng@fedoraproject.org> - 2.6.1-3
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_27_Binutils_Mass_Rebuild
 
