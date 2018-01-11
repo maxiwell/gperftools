@@ -3,20 +3,15 @@
 %{!?_pkgdocdir: %global _pkgdocdir %{_docdir}/%{name}-%{version}}
 
 Name:		gperftools
-Version:	2.6.1
-Release:	5%{?dist}
+Version:	2.6.3
+Release:	1%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
 URL:		https://github.com/gperftools/gperftools
 Source0:	https://github.com/gperftools/gperftools/releases/download/%{name}-%{version}/%{name}-%{version}.tar.gz
-# There is no ucontext typedef on ppc64, at least not in rawhide.
-Patch0:		gperftools-2.6.1-ppc64-ucontext-fix.patch
 # Conditionalize generic dynamic tls model
 Patch1:		gperftools-2.6.1-disable-generic-dynamic-tls.patch
-# Add support for C11 aligned_alloc
-# https://github.com/gperftools/gperftools/commit/d406f228
-Patch2:		gperftools-2.6.1-aligned_alloc.patch
 ExcludeArch:	s390
 
 %ifnarch s390x
@@ -66,9 +61,7 @@ Pprof is a heap and CPU profiler tool, part of the gperftools suite.
 
 %prep
 %setup -q
-%patch0 -p1 -b .ucontextfix
 %patch1 -p1 -b .dynload
-%patch2 -p1 -b .aa
 
 # Fix end-of-line encoding
 sed -i 's/\r//' README_windows.txt
@@ -128,6 +121,9 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Thu Jan 11 2018 Tom Callaway <spot@fedoraproject.org> - 2.6.3-1
+- update to 2.6.3
+
 * Wed Oct 11 2017 Tom Callaway <spot@fedoraproject.org> - 2.6.1-5
 - add aligned_alloc support
 
