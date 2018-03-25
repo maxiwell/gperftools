@@ -3,8 +3,8 @@
 %{!?_pkgdocdir: %global _pkgdocdir %{_docdir}/%{name}-%{version}}
 
 Name:		gperftools
-Version:	2.6.3
-Release:	2%{?dist}
+Version:	2.6.90
+Release:	1%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
@@ -121,6 +121,9 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Sun Mar 25 2018 Tom Callaway <spot@fedoraproject.org> - 2.6.90-1
+- update to 2.6.90
+
 * Wed Feb 07 2018 Fedora Release Engineering <releng@fedoraproject.org> - 2.6.3-2
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_28_Mass_Rebuild
 
