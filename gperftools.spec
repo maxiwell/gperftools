@@ -3,7 +3,7 @@
 %{!?_pkgdocdir: %global _pkgdocdir %{_docdir}/%{name}-%{version}}
 
 Name:		gperftools
-Version:	2.6.90
+Version:	2.7
 Release:	1%{?dist}
 License:	BSD
 Group:		Development/Tools
@@ -121,6 +121,9 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Tue May  1 2018 Tom Callaway <spot@fedoraproject.org> - 2.7-1
+- update to 2.7
+
 * Sun Mar 25 2018 Tom Callaway <spot@fedoraproject.org> - 2.6.90-1
 - update to 2.6.90
 
