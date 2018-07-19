@@ -15,6 +15,7 @@ Patch1:		gperftools-2.6.1-disable-generic-dynamic-tls.patch
 ExcludeArch:	s390
 
 %ifnarch s390x
+BuildRequires:  gcc-c++
 BuildRequires:	libunwind-devel
 %endif
 BuildRequires:	perl-generators
