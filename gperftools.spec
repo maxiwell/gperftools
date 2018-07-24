@@ -16,6 +16,7 @@ ExcludeArch:	s390
 
 %ifnarch s390x
 BuildRequires:  gcc-c++
+BuildRequires:  gcc-c++
 BuildRequires:	libunwind-devel
 %endif
 BuildRequires:	perl-generators
