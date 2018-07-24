@@ -4,7 +4,7 @@
 
 Name:		gperftools
 Version:	2.7
-Release:	2%{?dist}
+Release:	3%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
@@ -14,9 +14,8 @@ Source0:	https://github.com/gperftools/gperftools/releases/download/%{name}-%{ve
 Patch1:		gperftools-2.6.1-disable-generic-dynamic-tls.patch
 ExcludeArch:	s390
 
+BuildRequires:  gcc-c++
 %ifnarch s390x
-BuildRequires:  gcc-c++
-BuildRequires:  gcc-c++
 BuildRequires:	libunwind-devel
 %endif
 BuildRequires:	perl-generators
@@ -123,6 +122,9 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Tue Jul 24 2018 Tom Callaway <spot@fedoraproject.org> - 2.7-3
+- everyone needs BuildRequires:  gcc-c++, including s390x
+
 * Fri Jul 13 2018 Fedora Release Engineering <releng@fedoraproject.org> - 2.7-2
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_29_Mass_Rebuild
 
