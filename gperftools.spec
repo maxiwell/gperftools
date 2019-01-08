@@ -4,7 +4,7 @@
 
 Name:		gperftools
 Version:	2.7
-Release:	3%{?dist}
+Release:	4%{?dist}
 License:	BSD
 Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
@@ -12,6 +12,7 @@ URL:		https://github.com/gperftools/gperftools
 Source0:	https://github.com/gperftools/gperftools/releases/download/%{name}-%{version}/%{name}-%{version}.tar.gz
 # Conditionalize generic dynamic tls model
 Patch1:		gperftools-2.6.1-disable-generic-dynamic-tls.patch
+Patch2:		gperftools-2.7-gcc9-drop-rsp-clobber.patch
 ExcludeArch:	s390
 
 BuildRequires:  gcc-c++
@@ -63,6 +64,7 @@ Pprof is a heap and CPU profiler tool, part of the gperftools suite.
 %prep
 %setup -q
 %patch1 -p1 -b .dynload
+%patch2 -p1 -b .gcc9
 
 # Fix end-of-line encoding
 sed -i 's/\r//' README_windows.txt
@@ -122,6 +124,9 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Tue Jan  8 2019 Tom Callaway <spot@fedoraproject.org> - 2.7-4
+- drop rsp clobber, which breaks gcc9 (thanks to Jeff Law)
+
 * Tue Jul 24 2018 Tom Callaway <spot@fedoraproject.org> - 2.7-3
 - everyone needs BuildRequires:  gcc-c++, including s390x
 
