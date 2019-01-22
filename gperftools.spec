@@ -104,8 +104,7 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 # LD_LIBRARY_PATH=./.libs make check
 %endif
 
-%post libs -p /sbin/ldconfig
-%postun libs -p /sbin/ldconfig
+%ldconfig_scriptlets libs
 
 %files
 
