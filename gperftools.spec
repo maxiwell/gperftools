@@ -6,7 +6,6 @@ Name:		gperftools
 Version:	2.7
 Release:	4%{?dist}
 License:	BSD
-Group:		Development/Tools
 Summary:	Very fast malloc and performance analysis tools
 URL:		https://github.com/gperftools/gperftools
 Source0:	https://github.com/gperftools/gperftools/releases/download/%{name}-%{version}/%{name}-%{version}.tar.gz
@@ -35,7 +34,6 @@ binaries, libraries, and development headers, so that you can use them.
 
 %package devel
 Summary:	Development libraries and headers for gperftools
-Group:		Development/Libraries
 Requires:	%{name}-libs%{?_isa} = %{version}-%{release}
 Provides:	google-perftools-devel = %{version}-%{release}
 Obsoletes:	google-perftools-devel < 2.0
