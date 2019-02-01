@@ -4,7 +4,7 @@
 
 Name:		gperftools
 Version:	2.7
-Release:	4%{?dist}
+Release:	5%{?dist}
 License:	BSD
 Summary:	Very fast malloc and performance analysis tools
 URL:		https://github.com/gperftools/gperftools
@@ -121,6 +121,9 @@ rm -rf %{buildroot}%{_pkgdocdir}/INSTALL
 %{_libdir}/*.so.*
 
 %changelog
+* Fri Feb 01 2019 Fedora Release Engineering <releng@fedoraproject.org> - 2.7-5
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_30_Mass_Rebuild
+
 * Tue Jan  8 2019 Tom Callaway <spot@fedoraproject.org> - 2.7-4
 - drop rsp clobber, which breaks gcc9 (thanks to Jeff Law)
 
