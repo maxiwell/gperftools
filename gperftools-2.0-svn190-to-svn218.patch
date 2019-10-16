@@ -1,0 +1,1972 @@
+Only in gperftools-2.0: aclocal.m4
+Only in gperftools-2.0: aclocal.m4.svn-r190
+diff -urP gperftools-2.0/autogen.sh gperftools-2.0-svn218/autogen.sh
+--- gperftools-2.0/autogen.sh	2013-06-04 10:20:21.135844736 -0400
++++ gperftools-2.0-svn218/autogen.sh	2013-06-04 10:16:58.887841701 -0400
+@@ -1,54 +1,3 @@
+ #!/bin/sh
+ 
+-# Before using, you should figure out all the .m4 macros that your
+-# configure.m4 script needs and make sure they exist in the m4/
+-# directory.
+-#
+-# These are the files that this script might edit:
+-#    aclocal.m4 configure Makefile.in src/config.h.in \
+-#    depcomp config.guess config.sub install-sh missing mkinstalldirs \
+-#    ltmain.sh
+-#
+-# Here's a command you can run to see what files aclocal will import:
+-#  aclocal -I ../autoconf --output=- | sed -n 's/^m4_include..\([^]]*\).*/\1/p'
+-
+-set -ex
+-rm -rf autom4te.cache
+-
+-trap 'rm -f aclocal.m4.tmp' EXIT
+-
+-# Returns the first binary in $* that exists, or the last arg, if none exists.
+-WhichOf() {
+-  for candidate in "$@"; do
+-    if "$candidate" --version >/dev/null 2>&1; then
+-      echo "$candidate"
+-      return
+-    fi
+-  done
+-  echo "$candidate"   # the last one in $@
+-}
+-
+-# Use version 1.9 of aclocal and automake if available.
+-ACLOCAL=`WhichOf aclocal-1.9 aclocal`
+-AUTOMAKE=`WhichOf automake-1.9 automake`
+-LIBTOOLIZE=`WhichOf glibtoolize libtoolize15 libtoolize14 libtoolize`
+-
+-# aclocal tries to overwrite aclocal.m4 even if the contents haven't
+-# changed, which is annoying when the file is not open for edit (in
+-# p4).  We work around this by writing to a temp file and just
+-# updating the timestamp if the file hasn't change.
+-"$ACLOCAL" --force -I m4 --output=aclocal.m4.tmp
+-if cmp aclocal.m4.tmp aclocal.m4; then
+-  touch aclocal.m4               # pretend that we regenerated the file
+-  rm -f aclocal.m4.tmp
+-else
+-  mv aclocal.m4.tmp aclocal.m4   # we did set -e above, so we die if this fails
+-fi
+-
+-grep -q '^[^#]*AC_PROG_LIBTOOL' configure.ac && "$LIBTOOLIZE" -c -f
+-autoconf -f -W all,no-obsolete
+-autoheader -f -W all
+-"$AUTOMAKE" -a -c -f -W all
+-
+-rm -rf autom4te.cache
+-exit 0
++autoreconf -i
+Only in gperftools-2.0: autogen.sh.svn-r190
+Only in gperftools-2.0: compile
+Only in gperftools-2.0: config.guess
+Only in gperftools-2.0: config.sub
+Only in gperftools-2.0: configure
+diff -urP gperftools-2.0/configure.ac gperftools-2.0-svn218/configure.ac
+--- gperftools-2.0/configure.ac	2013-06-04 10:20:21.138844736 -0400
++++ gperftools-2.0-svn218/configure.ac	2013-06-04 10:16:58.805841700 -0400
+@@ -99,28 +99,7 @@
+   [gpt_cv_objcopy_weaken=no])
+ AM_CONDITIONAL(HAVE_OBJCOPY_WEAKEN, test $gpt_cv_objcopy_weaken = yes)
+ 
+-case $host_os in
+-  *mingw*)
+-    # Disabling fast install keeps libtool from creating wrapper scripts
+-    # around the executables it builds.  Such scripts have caused failures on
+-    # MinGW.  Using this option means an extra link step is executed during
+-    # "make install".
+-    _LT_SET_OPTION([LT_INIT],[disable-fast-install])
+-AC_DIAGNOSE([obsolete],[AC_DISABLE_FAST_INSTALL: Remove this warning and the call to _LT_SET_OPTION when you put
+-the `disable-fast-install' option into LT_INIT's first parameter.])
+-
+-    ;;
+-   *)
+-    _LT_SET_OPTION([LT_INIT],[fast-install])
+-AC_DIAGNOSE([obsolete],[AC_ENABLE_FAST_INSTALL: Remove this warning and the call to _LT_SET_OPTION when you put
+-the `fast-install' option into LT_INIT's first parameter.])
+-
+-    ;;
+-esac
+-
+-LT_INIT
+-AC_SUBST(LIBTOOL_DEPS)
+-AM_CONDITIONAL(USE_LIBTOOL, test "x$LIBTOOL" != "x")
++LT_INIT([])
+ 
+ AC_C_INLINE
+ AX_C___ATTRIBUTE__
+@@ -134,6 +113,7 @@
+ AC_CHECK_TYPES([Elf32_Versym],,, [#include <elf.h>])   # for vdso_support.h
+ AC_CHECK_FUNCS(sbrk)            # for tcmalloc to get memory
+ AC_CHECK_FUNCS(geteuid)         # for turning off services when run as root
++AC_CHECK_FUNCS(fork)            # for the pthread_atfork setup
+ AC_CHECK_HEADERS(features.h)    # for vdso_support.h
+ AC_CHECK_HEADERS(malloc.h)      # some systems define stuff there, others not
+ AC_CHECK_HEADERS(sys/malloc.h)  # where some versions of OS X put malloc.h
+@@ -183,6 +163,11 @@
+ # This workaround comes from
+ #    http://cygwin.com/ml/cygwin/2004-11/msg00138.html
+ case "$host" in
++  *-*-mingw*)
++               dnl mingw doesn't have mmap, not worth
++               dnl checking. Especially given that mingw can be a
++               dnl cross-compiler
++               ;;
+   *-*-cygwin*)
+ 	       ac_cv_func_mmap_fixed_mapped=yes
+                AC_DEFINE(HAVE_MMAP, 1,
+@@ -310,10 +295,18 @@
+ # Note, however, that our code tickles a bug in gcc < 4.1.2
+ # involving TLS and -fPIC (which our libraries will use) on x86:
+ #   http://gcc.gnu.org/ml/gcc-bugs/2006-09/msg02275.html
++#
++# And mingw also does compile __thread but resultant code actually
++# fails to work correctly at least in some not so ancient version:
++# http://mingw-users.1079350.n2.nabble.com/gcc-4-4-multi-threaded-exception-handling-amp-thread-specifier-not-working-td3440749.html
+ AC_MSG_CHECKING([for __thread])
+ AC_LINK_IFELSE([AC_LANG_PROGRAM([#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__)) && ((__GNUC__ < 4) || (__GNUC__ == 4 && __GNUC_MINOR__ < 1) || (__GNUC__ == 4 && __GNUC_MINOR__ == 1 && __GNUC_PATCHLEVEL__ < 2))
+ #error gcc has this bug: http://gcc.gnu.org/ml/gcc-bugs/2006-09/msg02275.html
+-#endif], [static __thread int p = 0])],
++#endif
++#if defined(__MINGW32__)
++#error mingw doesn't really support tls
++#endif
++], [static __thread int p = 0])],
+                [AC_DEFINE(HAVE_TLS, 1,
+                           Define to 1 if compiler supports __thread)
+                 AC_MSG_RESULT([yes])],
+Only in gperftools-2.0: configure.ac.svn-r190
+Only in gperftools-2.0: configure.svn-r190
+Only in gperftools-2.0: depcomp
+Only in gperftools-2.0/doc: cpuprofile.html.svn-r190
+Only in gperftools-2.0/doc: heapprofile.html.svn-r190
+Only in gperftools-2.0/doc: pprof.see_also.svn-r190
+diff -urP gperftools-2.0/INSTALL gperftools-2.0-svn218/INSTALL
+--- gperftools-2.0/INSTALL	2012-02-03 14:40:32.000000000 -0500
++++ gperftools-2.0-svn218/INSTALL	2013-06-04 10:16:58.886841701 -0400
+@@ -8,6 +8,28 @@
+ Perftools-Specific Install Notes
+ ================================
+ 
++*** Building from source repository
++
++As of 2.1 gperftools does not have configure and other autotools
++products checked into it's source repository. This is common practice
++for projects using autotools.
++
++NOTE: Source releases (.tar.gz that you download from
++code.google.com/p/gperftools) still have all required files just as
++before. Nothing has changed w.r.t. building from .tar.gz releases.
++
++But, in order to build gperftools checked out from subversion
++repository you need to have autoconf, automake and libtool
++installed. And before running ./configure you have to generate it (and
++a bunch of other files) by running ./autogen.sh script. That script
++will take care of calling correct autotools programs in correct order.
++
++If you're maintainer then it's business as usual too. Just run make
++dist (or, preferably, make distcheck) and it'll produce .tar.gz or
++.tar.bz2 with all autotools magic already included. So that users can
++build our software without having autotools.
++
++
+ *** NOTE FOR 64-BIT LINUX SYSTEMS
+ 
+ The glibc built-in stack-unwinder on 64-bit systems has some problems
+Only in gperftools-2.0: install-sh
+Only in gperftools-2.0: libtool
+Only in gperftools-2.0: ltmain.sh
+Only in gperftools-2.0/m4: libtool.m4
+Only in gperftools-2.0/m4: libtool.m4.svn-r190
+Only in gperftools-2.0/m4: lt~obsolete.m4
+Only in gperftools-2.0/m4: ltoptions.m4
+Only in gperftools-2.0/m4: ltsugar.m4
+Only in gperftools-2.0/m4: ltversion.m4
+diff -urP gperftools-2.0/Makefile.am gperftools-2.0-svn218/Makefile.am
+--- gperftools-2.0/Makefile.am	2013-06-04 10:20:21.140844736 -0400
++++ gperftools-2.0-svn218/Makefile.am	2013-06-04 10:16:58.887841701 -0400
+@@ -221,7 +221,7 @@
+                         src/windows/preamble_patcher.cc \
+                         src/windows/preamble_patcher_with_stub.cc
+ # patch_functions.cc uses Psapi.lib.  MSVC has a #pragma for that, but not us.
+-libwindows_la_LIBADD = -lPsapi
++libwindows_la_LIBADD = -lpsapi
+ 
+ SPINLOCK_INCLUDES = src/base/spinlock.h \
+                     src/base/spinlock_internal.h \
+@@ -238,6 +238,7 @@
+ noinst_LTLIBRARIES += libspinlock.la
+ libspinlock_la_SOURCES = src/base/spinlock.cc \
+                          src/base/spinlock_internal.cc \
++                         src/base/atomicops-internals-x86.cc \
+                          $(SPINLOCK_INCLUDES)
+ 
+ LIBSPINLOCK = libwindows.la libspinlock.la libsysinfo.la liblogging.la
+@@ -355,7 +356,7 @@
+                            $(STACKTRACE_INCLUDES)
+ libstacktrace_la_LIBADD = $(UNWIND_LIBS) $(LIBSPINLOCK)
+ STACKTRACE_SYMBOLS = '(GetStackTrace|GetStackFrames|GetStackTraceWithContext|GetStackFramesWithContext)'
+-libstacktrace_la_LDFLAGS = -export-symbols-regex $(STACKTRACE_SYMBOLS)
++libstacktrace_la_LDFLAGS = -export-symbols-regex $(STACKTRACE_SYMBOLS) $(AM_LDFLAGS)
+ 
+ ### Unittests
+ TESTS += stacktrace_unittest
+@@ -468,7 +469,7 @@
+                                            -DNO_HEAP_CHECK \
+                                            $(PTHREAD_CFLAGS) -DNDEBUG \
+                                            $(AM_CXXFLAGS) $(NO_EXCEPTIONS)
+-libtcmalloc_minimal_internal_la_LDFLAGS = $(PTHREAD_CFLAGS)
++libtcmalloc_minimal_internal_la_LDFLAGS = $(PTHREAD_CFLAGS) $(AM_LDFLAGS)
+ libtcmalloc_minimal_internal_la_LIBADD = $(PTHREAD_LIBS) $(LIBSPINLOCK)
+ 
+ lib_LTLIBRARIES += libtcmalloc_minimal.la
+@@ -477,7 +478,7 @@
+ libtcmalloc_minimal_la_CXXFLAGS = -DNO_TCMALLOC_SAMPLES \
+                                   $(PTHREAD_CFLAGS) -DNDEBUG $(AM_CXXFLAGS)
+ # -version-info gets passed to libtool
+-libtcmalloc_minimal_la_LDFLAGS = $(PTHREAD_CFLAGS) -version-info @TCMALLOC_SO_VERSION@
++libtcmalloc_minimal_la_LDFLAGS = $(PTHREAD_CFLAGS) -version-info @TCMALLOC_SO_VERSION@ $(AM_LDFLAGS)
+ libtcmalloc_minimal_la_LIBADD = libtcmalloc_minimal_internal.la $(PTHREAD_LIBS)
+ 
+ # For windows, we're playing around with trying to do some stacktrace
+@@ -539,6 +540,12 @@
+ tcmalloc_minimal_large_unittest_LDFLAGS = $(PTHREAD_CFLAGS) $(TCMALLOC_FLAGS)
+ tcmalloc_minimal_large_unittest_LDADD = $(LIBTCMALLOC_MINIMAL) $(PTHREAD_LIBS)
+ 
++TESTS += tcmalloc_minimal_large_heap_fragmentation_unittest
++tcmalloc_minimal_large_heap_fragmentation_unittest_SOURCES = src/tests/large_heap_fragmentation_unittest.cc
++tcmalloc_minimal_large_heap_fragmentation_unittest_CXXFLAGS = $(PTHREAD_CFLAGS) $(AM_CXXFLAGS)
++tcmalloc_minimal_large_heap_fragmentation_unittest_LDFLAGS = $(PTHREAD_CFLAGS) $(TCMALLOC_FLAGS)
++tcmalloc_minimal_large_heap_fragmentation_unittest_LDADD = $(LIBTCMALLOC_MINIMAL) $(PTHREAD_LIBS)
++
+ # This tests it works to LD_PRELOAD libtcmalloc (tests maybe_threads.cc)
+ # In theory this should work under mingw, but mingw has trouble running
+ # shell scripts that end in .exe.  And it doesn't seem to build shared
+@@ -898,8 +905,16 @@
+ 
+ ### Unittests
+ 
+-TESTS += tcmalloc_unittest
+-TCMALLOC_UNITTEST_INCLUDES = src/config_for_unittests.h \
++TESTS += tcmalloc_unittest.sh$(EXEEXT)
++tcmalloc_unittest_sh_SOURCES = src/tests/tcmalloc_unittest.sh
++noinst_SCRIPTS += $(tcmalloc_unittest_sh_SOURCES)
++tcmalloc_unittest.sh$(EXEEXT): $(top_srcdir)/$(tcmalloc_unittest_sh_SOURCES) \
++                               tcmalloc_unittest
++	rm -f $@
++	cp -p $(top_srcdir)/$(tcmalloc_unittest_sh_SOURCES) $@
++
++noinst_PROGRAMS += tcmalloc_unittest
++tcmalloc_unittest_INCLUDES = src/config_for_unittests.h \
+                              src/gperftools/malloc_extension.h
+ tcmalloc_unittest_SOURCES = src/tests/tcmalloc_unittest.cc \
+                             src/tcmalloc.h \
+@@ -956,6 +971,12 @@
+ tcmalloc_large_unittest_LDFLAGS = $(PTHREAD_CFLAGS) $(TCMALLOC_FLAGS)
+ tcmalloc_large_unittest_LDADD = $(LIBTCMALLOC) $(PTHREAD_LIBS)
+ 
++TESTS += tcmalloc_large_heap_fragmentation_unittest
++tcmalloc_large_heap_fragmentation_unittest_SOURCES = src/tests/large_heap_fragmentation_unittest.cc
++tcmalloc_large_heap_fragmentation_unittest_CXXFLAGS = $(PTHREAD_CFLAGS) $(AM_CXXFLAGS)
++tcmalloc_large_heap_fragmentation_unittest_LDFLAGS = $(PTHREAD_CFLAGS) $(TCMALLOC_FLAGS)
++tcmalloc_large_heap_fragmentation_unittest_LDADD = $(LIBTCMALLOC) $(PTHREAD_LIBS)
++
+ TESTS += raw_printer_test
+ raw_printer_test_SOURCES = src/tests/raw_printer_test.cc
+ raw_printer_test_CXXFLAGS = $(PTHREAD_CFLAGS) $(AM_CXXFLAGS)
+Only in gperftools-2.0: Makefile.am.svn-r190
+Only in gperftools-2.0: Makefile.in
+Only in gperftools-2.0: Makefile.in.svn-r190
+Only in gperftools-2.0: missing
+Only in gperftools-2.0: mkinstalldirs
+Only in gperftools-2.0: NEWS.svn-r190
+diff -urP gperftools-2.0/src/base/atomicops.h gperftools-2.0-svn218/src/base/atomicops.h
+--- gperftools-2.0/src/base/atomicops.h	2012-02-02 16:36:23.000000000 -0500
++++ gperftools-2.0-svn218/src/base/atomicops.h	2013-06-04 10:16:58.375841694 -0400
+@@ -50,6 +50,16 @@
+ // implementations on other archtectures will cause your code to break.  If you
+ // do not know what you are doing, avoid these routines, and use a Mutex.
+ //
++// These following lower-level operations are typically useful only to people
++// implementing higher-level synchronization operations like spinlocks,
++// mutexes, and condition-variables.  They combine CompareAndSwap(), a load, or
++// a store with appropriate memory-ordering instructions.  "Acquire" operations
++// ensure that no later memory access can be reordered ahead of the operation.
++// "Release" operations ensure that no previous memory access can be reordered
++// after the operation.  "Barrier" operations have both "Acquire" and "Release"
++// semantics.   A MemoryBarrier() has "Barrier" semantics, but does no memory
++// access.
++//
+ // It is incorrect to make direct assignments to/from an atomic variable.
+ // You should use one of the Load or Store routines.  The NoBarrier
+ // versions are provided when no barriers are needed:
+@@ -95,10 +105,10 @@
+ #include "base/atomicops-internals-arm-v6plus.h"
+ #elif defined(ARMV3)
+ #include "base/atomicops-internals-arm-generic.h"
+-#elif defined(_WIN32)
+-#include "base/atomicops-internals-windows.h"
+ #elif defined(__GNUC__) && (defined(__i386) || defined(__x86_64__))
+ #include "base/atomicops-internals-x86.h"
++#elif defined(_WIN32)
++#include "base/atomicops-internals-windows.h"
+ #elif defined(__linux__) && defined(__PPC__)
+ #include "base/atomicops-internals-linuxppc.h"
+ #else
+@@ -149,6 +159,18 @@
+       reinterpret_cast<volatile AtomicWordCastType*>(ptr), new_value);
+ }
+ 
++AtomicWord Acquire_AtomicExchange(volatile AtomicWord* ptr,
++                                  AtomicWord new_value) {
++  return Acquire_AtomicExchange(
++      reinterpret_cast<volatile AtomicWordCastType*>(ptr), new_value);
++}
++
++AtomicWord Release_AtomicExchange(volatile AtomicWord* ptr,
++                                  AtomicWord new_value) {
++  return Release_AtomicExchange(
++      reinterpret_cast<volatile AtomicWordCastType*>(ptr), new_value);
++}
++
+ // Atomically increment *ptr by "increment".  Returns the new value of
+ // *ptr with the increment applied.  This routine implies no memory
+ // barriers.
+@@ -164,17 +186,6 @@
+       reinterpret_cast<volatile AtomicWordCastType*>(ptr), increment);
+ }
+ 
+-// ------------------------------------------------------------------------
+-// These following lower-level operations are typically useful only to people
+-// implementing higher-level synchronization operations like spinlocks,
+-// mutexes, and condition-variables.  They combine CompareAndSwap(), a load, or
+-// a store with appropriate memory-ordering instructions.  "Acquire" operations
+-// ensure that no later memory access can be reordered ahead of the operation.
+-// "Release" operations ensure that no previous memory access can be reordered
+-// after the operation.  "Barrier" operations have both "Acquire" and "Release"
+-// semantics.   A MemoryBarrier() has "Barrier" semantics, but does no memory
+-// access.
+-// ------------------------------------------------------------------------
+ inline AtomicWord Acquire_CompareAndSwap(volatile AtomicWord* ptr,
+                                          AtomicWord old_value,
+                                          AtomicWord new_value) {
+@@ -250,6 +261,8 @@
+                                   Atomic32 old_value,
+                                   Atomic32 new_value);
+ Atomic32 NoBarrier_AtomicExchange(volatile Atomic32* ptr, Atomic32 new_value);
++Atomic32 Acquire_AtomicExchange(volatile Atomic32* ptr, Atomic32 new_value);
++Atomic32 Release_AtomicExchange(volatile Atomic32* ptr, Atomic32 new_value);
+ Atomic32 NoBarrier_AtomicIncrement(volatile Atomic32* ptr, Atomic32 increment);
+ Atomic32 Barrier_AtomicIncrement(volatile Atomic32* ptr,
+                                  Atomic32 increment);
+@@ -271,6 +284,8 @@
+                                   Atomic64 old_value,
+                                   Atomic64 new_value);
+ Atomic64 NoBarrier_AtomicExchange(volatile Atomic64* ptr, Atomic64 new_value);
++Atomic64 Acquire_AtomicExchange(volatile Atomic64* ptr, Atomic64 new_value);
++Atomic64 Release_AtomicExchange(volatile Atomic64* ptr, Atomic64 new_value);
+ Atomic64 NoBarrier_AtomicIncrement(volatile Atomic64* ptr, Atomic64 increment);
+ Atomic64 Barrier_AtomicIncrement(volatile Atomic64* ptr, Atomic64 increment);
+ 
+diff -urP gperftools-2.0/src/base/atomicops-internals-arm-generic.h gperftools-2.0-svn218/src/base/atomicops-internals-arm-generic.h
+--- gperftools-2.0/src/base/atomicops-internals-arm-generic.h	2012-02-02 16:36:23.000000000 -0500
++++ gperftools-2.0-svn218/src/base/atomicops-internals-arm-generic.h	2013-06-04 10:16:58.378841694 -0400
+@@ -89,6 +89,18 @@
+   return old_value;
+ }
+ 
++inline Atomic32 Acquire_AtomicExchange(volatile Atomic32* ptr,
++                                       Atomic32 new_value) {
++  // pLinuxKernelCmpxchg already has acquire and release barrier semantics.
++  return NoBarrier_AtomicExchange(ptr, new_value);
++}
++
++inline Atomic32 Release_AtomicExchange(volatile Atomic32* ptr,
++                                       Atomic32 new_value) {
++  // pLinuxKernelCmpxchg already has acquire and release barrier semantics.
++  return NoBarrier_AtomicExchange(ptr, new_value);
++}
++
+ inline Atomic32 Barrier_AtomicIncrement(volatile Atomic32* ptr,
+                                         Atomic32 increment) {
+   for (;;) {
+@@ -176,6 +188,18 @@
+   return 0;
+ }
+ 
++inline Atomic64 Acquire_AtomicExchange(volatile Atomic64* ptr,
++                                       Atomic64 new_value) {
++  // pLinuxKernelCmpxchg already has acquire and release barrier semantics.
++  return NoBarrier_AtomicExchange(ptr, new_value);
++}
++
++inline Atomic64 Release_AtomicExchange(volatile Atomic64* ptr,
++                                       Atomic64 new_value) {
++  // pLinuxKernelCmpxchg already has acquire and release barrier semantics.
++  return NoBarrier_AtomicExchange(ptr, new_value);
++}
++
+ inline Atomic64 NoBarrier_AtomicIncrement(volatile Atomic64* ptr,
+                                           Atomic64 increment) {
+   NotImplementedFatalError("NoBarrier_AtomicIncrement");
+diff -urP gperftools-2.0/src/base/atomicops-internals-arm-v6plus.h gperftools-2.0-svn218/src/base/atomicops-internals-arm-v6plus.h
+--- gperftools-2.0/src/base/atomicops-internals-arm-v6plus.h	2012-02-02 16:36:23.000000000 -0500
++++ gperftools-2.0-svn218/src/base/atomicops-internals-arm-v6plus.h	2013-06-04 10:16:58.372841694 -0400
+@@ -94,6 +94,28 @@
+   return old;
+ }
+ 
++inline void MemoryBarrier() {
++#if defined(__ARM_ARCH_6__) || defined(__ARM_ARCH_6J__) || defined(__ARM_ARCH_6K__) || defined(__ARM_ARCH_6Z__) || defined(__ARM_ARCH_6KZ__) || defined(__ARM_ARCH_6T2__)
++  uint32_t dest = 0;
++  __asm__ __volatile__("mcr p15,0,%0,c7,c10,5" :"=&r"(dest) : : "memory");
++#else
++  __asm__ __volatile__("dmb" : : : "memory");
++#endif
++}
++
++inline Atomic32 Acquire_AtomicExchange(volatile Atomic32* ptr,
++                                       Atomic32 new_value) {
++  Atomic32 old_value = NoBarrier_AtomicExchange(ptr, new_value);
++  MemoryBarrier();
++  return old_value;
++}
++
++inline Atomic64 Release_AtomicExchange(volatile Atomic32* ptr,
++                                       Atomic32 new_value) {
++  MemoryBarrier();
++  return NoBarrier_AtomicExchange(ptr, new_value);
++}
++
+ inline Atomic32 NoBarrier_AtomicIncrement(volatile Atomic32* ptr,
+                                           Atomic32 increment) {
+   Atomic32 tmp, res;
+@@ -110,10 +132,6 @@
+   return res;
+ }
+ 
+-inline void MemoryBarrier() {
+-  __asm__ __volatile__("dmb" : : : "memory");
+-}
+-
+ inline Atomic32 Barrier_AtomicIncrement(volatile Atomic32* ptr,
+                                         Atomic32 increment) {
+   Atomic32 tmp, res;
+@@ -220,6 +238,19 @@
+   return old;
+ }
+ 
++inline Atomic64 Acquire_AtomicExchange(volatile Atomic64* ptr,
++                                       Atomic64 new_value) {
++  Atomic64 old_value = NoBarrier_AtomicExchange(ptr, new_value);
++  MemoryBarrier();
++  return old_value;
++}
++
++inline Atomic64 Release_AtomicExchange(volatile Atomic64* ptr,
++                                       Atomic64 new_value) {
++  MemoryBarrier();
++  return NoBarrier_AtomicExchange(ptr, new_value);
++}
++
+ inline Atomic64 NoBarrier_AtomicIncrement(volatile Atomic64* ptr,
+                                           Atomic64 increment) {
+   int store_failed;
+@@ -303,6 +334,18 @@
+   return 0;
+ }
+ 
++inline Atomic64 Acquire_AtomicExchange(volatile Atomic64* ptr,
++                                       Atomic64 new_value) {
++  NotImplementedFatalError("Acquire_AtomicExchange");
++  return 0;
++}
++
++inline Atomic64 Release_AtomicExchange(volatile Atomic64* ptr,
++                                       Atomic64 new_value) {
++  NotImplementedFatalError("Release_AtomicExchange");
++  return 0;
++}
++
+ inline Atomic64 NoBarrier_AtomicIncrement(volatile Atomic64* ptr,
+                                           Atomic64 increment) {
+   NotImplementedFatalError("NoBarrier_AtomicIncrement");
+diff -urP gperftools-2.0/src/base/atomicops-internals-linuxppc.h gperftools-2.0-svn218/src/base/atomicops-internals-linuxppc.h
+--- gperftools-2.0/src/base/atomicops-internals-linuxppc.h	2013-06-04 10:20:21.141844736 -0400
++++ gperftools-2.0-svn218/src/base/atomicops-internals-linuxppc.h	2013-06-04 10:16:58.371841694 -0400
+@@ -163,6 +163,26 @@
+   return old_value;
+ }
+ 
++inline Atomic32 Acquire_AtomicExchange(volatile Atomic32 *ptr,
++                                       Atomic32 new_value) {
++  Atomic32 old_value;
++  do {
++    old_value = *ptr;
++  } while (!OSAtomicCompareAndSwap32Acquire(old_value, new_value,
++                                            const_cast<Atomic32*>(ptr)));
++  return old_value;
++}
++
++inline Atomic32 Release_AtomicExchange(volatile Atomic32 *ptr,
++                                       Atomic32 new_value) {
++  Atomic32 old_value;
++  do {
++    old_value = *ptr;
++  } while (!OSAtomicCompareAndSwap32Release(old_value, new_value,
++                                            const_cast<Atomic32*>(ptr)));
++  return old_value;
++}
++
+ inline Atomic32 NoBarrier_AtomicIncrement(volatile Atomic32 *ptr,
+                                           Atomic32 increment) {
+   return OSAtomicAdd32(increment, const_cast<Atomic32*>(ptr));
+@@ -294,6 +314,26 @@
+   return old_value;
+ }
+ 
++inline Atomic64 Acquire_AtomicExchange(volatile Atomic64 *ptr,
++                                       Atomic64 new_value) {
++  Atomic64 old_value;
++  do {
++    old_value = *ptr;
++  } while (!OSAtomicCompareAndSwap64Acquire(old_value, new_value,
++                                            const_cast<Atomic64*>(ptr)));
++  return old_value;
++}
++
++inline Atomic64 Release_AtomicExchange(volatile Atomic64 *ptr,
++                                       Atomic64 new_value) {
++  Atomic64 old_value;
++  do {
++    old_value = *ptr;
++  } while (!OSAtomicCompareAndSwap64Release(old_value, new_value,
++                                            const_cast<Atomic64*>(ptr)));
++  return old_value;
++}
++
+ inline Atomic64 NoBarrier_AtomicIncrement(volatile Atomic64 *ptr,
+                                           Atomic64 increment) {
+   return OSAtomicAdd64(increment, const_cast<Atomic64*>(ptr));
+Only in gperftools-2.0/src/base: atomicops-internals-linuxppc.h.svn-r190
+diff -urP gperftools-2.0/src/base/atomicops-internals-macosx.h gperftools-2.0-svn218/src/base/atomicops-internals-macosx.h
+--- gperftools-2.0/src/base/atomicops-internals-macosx.h	2012-02-02 16:36:22.000000000 -0500
++++ gperftools-2.0-svn218/src/base/atomicops-internals-macosx.h	2013-06-04 10:16:58.378841694 -0400
+@@ -132,6 +132,21 @@
+   return old_value;
+ }
+ 
++inline Atomic32 Acquire_AtomicExchange(volatile Atomic32 *ptr,
++                                       Atomic32 new_value) {
++  Atomic32 old_value;
++  do {
++    old_value = *ptr;
++  } while (!OSAtomicCompareAndSwap32Barrier(old_value, new_value,
++                                            const_cast<Atomic32*>(ptr)));
++  return old_value;
++}
++
++inline Atomic32 Release_AtomicExchange(volatile Atomic32 *ptr,
++                                       Atomic32 new_value) {
++  return Acquire_AtomicExchange(ptr, new_value);
++}
++
+ inline Atomic32 NoBarrier_AtomicIncrement(volatile Atomic32 *ptr,
+                                           Atomic32 increment) {
+   return OSAtomicAdd32(increment, const_cast<Atomic32*>(ptr));
+@@ -217,6 +232,21 @@
+   return old_value;
+ }
+ 
++inline Atomic64 Acquire_AtomicExchange(volatile Atomic64 *ptr,
++                                       Atomic64 new_value) {
++  Atomic64 old_value;
++  do {
++    old_value = *ptr;
++  } while (!OSAtomicCompareAndSwap64Barrier(old_value, new_value,
++                                            const_cast<Atomic64*>(ptr)));
++  return old_value;
++}
++
++inline Atomic64 Release_AtomicExchange(volatile Atomic64 *ptr,
++                                       Atomic64 new_value) {
++  return Acquire_AtomicExchange(ptr, new_value);
++}
++
+ inline Atomic64 NoBarrier_AtomicIncrement(volatile Atomic64 *ptr,
+                                           Atomic64 increment) {
+   return OSAtomicAdd64(increment, const_cast<Atomic64*>(ptr));
+diff -urP gperftools-2.0/src/base/atomicops-internals-windows.h gperftools-2.0-svn218/src/base/atomicops-internals-windows.h
+--- gperftools-2.0/src/base/atomicops-internals-windows.h	2013-06-04 10:20:21.142844736 -0400
++++ gperftools-2.0-svn218/src/base/atomicops-internals-windows.h	2013-06-04 10:16:58.378841694 -0400
+@@ -137,6 +137,18 @@
+   return static_cast<Atomic32>(result);
+ }
+ 
++inline Atomic32 Acquire_AtomicExchange(volatile Atomic32* ptr,
++                                       Atomic32 new_value) {
++  // FastInterlockedExchange has both acquire and release memory barriers.
++  return NoBarrier_AtomicExchange(ptr, new_value);
++}
++
++inline Atomic32 Release_AtomicExchange(volatile Atomic32* ptr,
++                                       Atomic32 new_value) {
++  // FastInterlockedExchange has both acquire and release memory barriers.
++  return NoBarrier_AtomicExchange(ptr, new_value);
++}
++
+ inline Atomic32 Barrier_AtomicIncrement(volatile Atomic32* ptr,
+                                         Atomic32 increment) {
+   return FastInterlockedExchangeAdd(
+@@ -188,8 +200,7 @@
+ }
+ 
+ inline void Acquire_Store(volatile Atomic32* ptr, Atomic32 value) {
+-  NoBarrier_AtomicExchange(ptr, value);
+-              // acts as a barrier in this implementation
++  Acquire_AtomicExchange(ptr, value);
+ }
+ 
+ inline void Release_Store(volatile Atomic32* ptr, Atomic32 value) {
+@@ -478,6 +489,18 @@
+ #endif  // defined(_WIN64) || defined(__MINGW64__)
+ 
+ 
++inline Atomic64 Acquire_AtomicExchange(volatile Atomic64* ptr,
++                                       Atomic64 new_value) {
++  // FastInterlockedExchange has both acquire and release memory barriers.
++  return NoBarrier_AtomicExchange(ptr, new_value);
++}
++
++inline Atomic64 Release_AtomicExchange(volatile Atomic64* ptr,
++                                       Atomic64 new_value) {
++  // FastInterlockedExchange has both acquire and release memory barriers.
++  return NoBarrier_AtomicExchange(ptr, new_value);
++}
++
+ inline Atomic64 Acquire_CompareAndSwap(volatile Atomic64* ptr,
+                                        Atomic64 old_value,
+                                        Atomic64 new_value) {
+Only in gperftools-2.0/src/base: atomicops-internals-windows.h.svn-r190
+diff -urP gperftools-2.0/src/base/atomicops-internals-x86.h gperftools-2.0-svn218/src/base/atomicops-internals-x86.h
+--- gperftools-2.0/src/base/atomicops-internals-x86.h	2012-02-02 16:36:23.000000000 -0500
++++ gperftools-2.0-svn218/src/base/atomicops-internals-x86.h	2013-06-04 10:16:58.373841694 -0400
+@@ -89,6 +89,21 @@
+   return new_value;  // Now it's the previous value.
+ }
+ 
++inline Atomic32 Acquire_AtomicExchange(volatile Atomic32* ptr,
++                                       Atomic32 new_value) {
++  Atomic32 old_val = NoBarrier_AtomicExchange(ptr, new_value);
++  if (AtomicOps_Internalx86CPUFeatures.has_amd_lock_mb_bug) {
++    __asm__ __volatile__("lfence" : : : "memory");
++  }
++  return old_val;
++}
++
++inline Atomic32 Release_AtomicExchange(volatile Atomic32* ptr,
++                                       Atomic32 new_value) {
++  // xchgl already has release memory barrier semantics.
++  return NoBarrier_AtomicExchange(ptr, new_value);
++}
++
+ inline Atomic32 NoBarrier_AtomicIncrement(volatile Atomic32* ptr,
+                                           Atomic32 increment) {
+   Atomic32 temp = increment;
+@@ -152,7 +167,7 @@
+     __asm__ __volatile__("mfence" : : : "memory");
+   } else { // mfence is faster but not present on PIII
+     Atomic32 x = 0;
+-    NoBarrier_AtomicExchange(&x, 0);  // acts as a barrier on PIII
++    Acquire_AtomicExchange(&x, 0);
+   }
+ }
+ 
+@@ -161,8 +176,7 @@
+     *ptr = value;
+     __asm__ __volatile__("mfence" : : : "memory");
+   } else {
+-    NoBarrier_AtomicExchange(ptr, value);
+-                          // acts as a barrier on PIII
++    Acquire_AtomicExchange(ptr, value);
+   }
+ }
+ #endif
+@@ -213,6 +227,21 @@
+   return new_value;  // Now it's the previous value.
+ }
+ 
++inline Atomic64 Acquire_AtomicExchange(volatile Atomic64* ptr,
++                                       Atomic64 new_value) {
++  Atomic64 old_val = NoBarrier_AtomicExchange(ptr, new_value);
++  if (AtomicOps_Internalx86CPUFeatures.has_amd_lock_mb_bug) {
++    __asm__ __volatile__("lfence" : : : "memory");
++  }
++  return old_val;
++}
++
++inline Atomic64 Release_AtomicExchange(volatile Atomic64* ptr,
++                                       Atomic64 new_value) {
++  // xchgq already has release memory barrier semantics.
++  return NoBarrier_AtomicExchange(ptr, new_value);
++}
++
+ inline Atomic64 NoBarrier_AtomicIncrement(volatile Atomic64* ptr,
+                                           Atomic64 increment) {
+   Atomic64 temp = increment;
+@@ -334,6 +363,20 @@
+   return old_val;
+ }
+ 
++inline Atomic64 Acquire_AtomicExchange(volatile Atomic64* ptr,
++                                       Atomic64 new_val) {
++  Atomic64 old_val = NoBarrier_AtomicExchange(ptr, new_val);
++  if (AtomicOps_Internalx86CPUFeatures.has_amd_lock_mb_bug) {
++    __asm__ __volatile__("lfence" : : : "memory");
++  }
++  return old_val;
++}
++
++inline Atomic64 Release_AtomicExchange(volatile Atomic64* ptr,
++                                       Atomic64 new_val) {
++ return NoBarrier_AtomicExchange(ptr, new_val);
++}
++
+ inline Atomic64 NoBarrier_AtomicIncrement(volatile Atomic64* ptr,
+                                           Atomic64 increment) {
+   Atomic64 old_val, new_val;
+diff -urP gperftools-2.0/src/base/basictypes.h gperftools-2.0-svn218/src/base/basictypes.h
+--- gperftools-2.0/src/base/basictypes.h	2013-06-04 10:20:21.142844736 -0400
++++ gperftools-2.0-svn218/src/base/basictypes.h	2013-06-04 10:16:58.372841694 -0400
+@@ -334,10 +334,13 @@
+ #if defined(HAVE___ATTRIBUTE__)
+ # if (defined(__i386__) || defined(__x86_64__))
+ #   define CACHELINE_ALIGNED __attribute__((aligned(64)))
+-# elif defined(__arm__)
+-#   define CACHELINE_ALIGNED __attribute__((aligned(32)))
+ # elif (defined(__PPC__) || defined(__PPC64__))
+ #   define CACHELINE_ALIGNED __attribute__((aligned(16)))
++# elif (defined(__arm__))
++#   define CACHELINE_ALIGNED __attribute__((aligned(64)))
++    // some ARMs have shorter cache lines (ARM1176JZF-S is 32 bytes for example) but obviously 64-byte aligned implies 32-byte aligned
++# else
++#   error Could not determine cache line length - unknown architecture
+ # endif
+ #else
+ # define CACHELINE_ALIGNED
+Only in gperftools-2.0/src/base: basictypes.h.svn-r190
+Only in gperftools-2.0/src/base: cycleclock.h.svn-r190
+diff -urP gperftools-2.0/src/base/linux_syscall_support.h gperftools-2.0-svn218/src/base/linux_syscall_support.h
+--- gperftools-2.0/src/base/linux_syscall_support.h	2013-06-04 10:20:21.142844736 -0400
++++ gperftools-2.0-svn218/src/base/linux_syscall_support.h	2013-06-04 10:16:58.379841694 -0400
+@@ -148,6 +148,8 @@
+ #include <errno.h>
+ #include <signal.h>
+ #include <stdarg.h>
++#include <stddef.h>
++#include <stdint.h>
+ #include <string.h>
+ #include <sys/ptrace.h>
+ #include <sys/resource.h>
+@@ -404,24 +406,24 @@
+ };
+ #elif defined(__x86_64__)
+ struct kernel_stat {
+-  unsigned long      st_dev;
+-  unsigned long      st_ino;
+-  unsigned long      st_nlink;
++  uint64_t           st_dev;
++  uint64_t           st_ino;
++  uint64_t           st_nlink;
+   unsigned           st_mode;
+   unsigned           st_uid;
+   unsigned           st_gid;
+   unsigned           __pad0;
+-  unsigned long      st_rdev;
+-  long               st_size;
+-  long               st_blksize;
+-  long               st_blocks;
+-  unsigned long      st_atime_;
+-  unsigned long      st_atime_nsec_;
+-  unsigned long      st_mtime_;
+-  unsigned long      st_mtime_nsec_;
+-  unsigned long      st_ctime_;
+-  unsigned long      st_ctime_nsec_;
+-  long               __unused[3];
++  uint64_t           st_rdev;
++  int64_t            st_size;
++  int64_t            st_blksize;
++  int64_t            st_blocks;
++  uint64_t           st_atime_;
++  uint64_t           st_atime_nsec_;
++  uint64_t           st_mtime_;
++  uint64_t           st_mtime_nsec_;
++  uint64_t           st_ctime_;
++  uint64_t           st_ctime_nsec_;
++  int64_t            __unused[3];
+ };
+ #elif defined(__PPC__)
+ struct kernel_stat {
+@@ -1013,74 +1015,141 @@
+      * location (e.g. when using the clone() system call with the CLONE_VM
+      * option).
+      */
++    #undef  LSS_ENTRYPOINT
++    #define LSS_ENTRYPOINT "syscall\n"
++
++    /* The x32 ABI has 32 bit longs, but the syscall interface is 64 bit.
++     * We need to explicitly cast to an unsigned 64 bit type to avoid implicit
++     * sign extension.  We can't cast pointers directly because those are
++     * 32 bits, and gcc will dump ugly warnings about casting from a pointer
++     * to an integer of a different size.
++     */
++    #undef  LSS_SYSCALL_ARG
++    #define LSS_SYSCALL_ARG(a) ((uint64_t)(uintptr_t)(a))
++    #undef  _LSS_RETURN
++    #define _LSS_RETURN(type, res, cast)                                      \
++      do {                                                                    \
++        if ((uint64_t)(res) >= (uint64_t)(-4095)) {                           \
++          LSS_ERRNO = -(res);                                                 \
++          res = -1;                                                           \
++        }                                                                     \
++        return (type)(cast)(res);                                             \
++      } while (0)
++    #undef  LSS_RETURN
++    #define LSS_RETURN(type, res) _LSS_RETURN(type, res, uintptr_t)
++
++    #undef  _LSS_BODY
++    #define _LSS_BODY(nr, type, name, cast, ...)                              \
++          long long __res;                                                    \
++          __asm__ __volatile__(LSS_BODY_ASM##nr LSS_ENTRYPOINT                \
++            : "=a" (__res)                                                    \
++            : "0" (__NR_##name) LSS_BODY_ARG##nr(__VA_ARGS__)                 \
++            : LSS_BODY_CLOBBER##nr "r11", "rcx", "memory");                   \
++          _LSS_RETURN(type, __res, cast)
+     #undef  LSS_BODY
+-    #define LSS_BODY(type,name, ...)                                          \
+-          long __res;                                                         \
+-          __asm__ __volatile__("syscall" : "=a" (__res) : "0" (__NR_##name),  \
+-            ##__VA_ARGS__ : "r11", "rcx", "memory");                          \
+-          LSS_RETURN(type, __res)
++    #define LSS_BODY(nr, type, name, args...) \
++      _LSS_BODY(nr, type, name, uintptr_t, ## args)
++
++    #undef  LSS_BODY_ASM0
++    #undef  LSS_BODY_ASM1
++    #undef  LSS_BODY_ASM2
++    #undef  LSS_BODY_ASM3
++    #undef  LSS_BODY_ASM4
++    #undef  LSS_BODY_ASM5
++    #undef  LSS_BODY_ASM6
++    #define LSS_BODY_ASM0
++    #define LSS_BODY_ASM1 LSS_BODY_ASM0
++    #define LSS_BODY_ASM2 LSS_BODY_ASM1
++    #define LSS_BODY_ASM3 LSS_BODY_ASM2
++    #define LSS_BODY_ASM4 LSS_BODY_ASM3 "movq %5,%%r10;"
++    #define LSS_BODY_ASM5 LSS_BODY_ASM4 "movq %6,%%r8;"
++    #define LSS_BODY_ASM6 LSS_BODY_ASM5 "movq %7,%%r9;"
++
++    #undef  LSS_BODY_CLOBBER0
++    #undef  LSS_BODY_CLOBBER1
++    #undef  LSS_BODY_CLOBBER2
++    #undef  LSS_BODY_CLOBBER3
++    #undef  LSS_BODY_CLOBBER4
++    #undef  LSS_BODY_CLOBBER5
++    #undef  LSS_BODY_CLOBBER6
++    #define LSS_BODY_CLOBBER0
++    #define LSS_BODY_CLOBBER1 LSS_BODY_CLOBBER0
++    #define LSS_BODY_CLOBBER2 LSS_BODY_CLOBBER1
++    #define LSS_BODY_CLOBBER3 LSS_BODY_CLOBBER2
++    #define LSS_BODY_CLOBBER4 LSS_BODY_CLOBBER3 "r10",
++    #define LSS_BODY_CLOBBER5 LSS_BODY_CLOBBER4 "r8",
++    #define LSS_BODY_CLOBBER6 LSS_BODY_CLOBBER5 "r9",
++
++    #undef  LSS_BODY_ARG0
++    #undef  LSS_BODY_ARG1
++    #undef  LSS_BODY_ARG2
++    #undef  LSS_BODY_ARG3
++    #undef  LSS_BODY_ARG4
++    #undef  LSS_BODY_ARG5
++    #undef  LSS_BODY_ARG6
++    #define LSS_BODY_ARG0()
++    #define LSS_BODY_ARG1(arg1) \
++      LSS_BODY_ARG0(), "D" (arg1)
++    #define LSS_BODY_ARG2(arg1, arg2) \
++      LSS_BODY_ARG1(arg1), "S" (arg2)
++    #define LSS_BODY_ARG3(arg1, arg2, arg3) \
++      LSS_BODY_ARG2(arg1, arg2), "d" (arg3)
++    #define LSS_BODY_ARG4(arg1, arg2, arg3, arg4) \
++      LSS_BODY_ARG3(arg1, arg2, arg3), "r" (arg4)
++    #define LSS_BODY_ARG5(arg1, arg2, arg3, arg4, arg5) \
++      LSS_BODY_ARG4(arg1, arg2, arg3, arg4), "r" (arg5)
++    #define LSS_BODY_ARG6(arg1, arg2, arg3, arg4, arg5, arg6) \
++      LSS_BODY_ARG5(arg1, arg2, arg3, arg4, arg5), "r" (arg6)
++
+     #undef _syscall0
+     #define _syscall0(type,name)                                              \
+       type LSS_NAME(name)() {                                                 \
+-        LSS_BODY(type, name);                                                 \
++        LSS_BODY(0, type, name);                                              \
+       }
+     #undef _syscall1
+     #define _syscall1(type,name,type1,arg1)                                   \
+       type LSS_NAME(name)(type1 arg1) {                                       \
+-        LSS_BODY(type, name, "D" ((long)(arg1)));                             \
++        LSS_BODY(1, type, name, LSS_SYSCALL_ARG(arg1));                       \
+       }
+     #undef _syscall2
+     #define _syscall2(type,name,type1,arg1,type2,arg2)                        \
+       type LSS_NAME(name)(type1 arg1, type2 arg2) {                           \
+-        LSS_BODY(type, name, "D" ((long)(arg1)), "S" ((long)(arg2)));         \
++        LSS_BODY(2, type, name, LSS_SYSCALL_ARG(arg1), LSS_SYSCALL_ARG(arg2));\
+       }
+     #undef _syscall3
+     #define _syscall3(type,name,type1,arg1,type2,arg2,type3,arg3)             \
+       type LSS_NAME(name)(type1 arg1, type2 arg2, type3 arg3) {               \
+-        LSS_BODY(type, name, "D" ((long)(arg1)), "S" ((long)(arg2)),          \
+-                             "d" ((long)(arg3)));                             \
++        LSS_BODY(3, type, name, LSS_SYSCALL_ARG(arg1), LSS_SYSCALL_ARG(arg2), \
++                                LSS_SYSCALL_ARG(arg3));                       \
+       }
+     #undef _syscall4
+     #define _syscall4(type,name,type1,arg1,type2,arg2,type3,arg3,type4,arg4)  \
+       type LSS_NAME(name)(type1 arg1, type2 arg2, type3 arg3, type4 arg4) {   \
+-          long __res;                                                         \
+-          __asm__ __volatile__("movq %5,%%r10; syscall" :                     \
+-            "=a" (__res) : "0" (__NR_##name),                                 \
+-            "D" ((long)(arg1)), "S" ((long)(arg2)), "d" ((long)(arg3)),       \
+-            "r" ((long)(arg4)) : "r10", "r11", "rcx", "memory");              \
+-          LSS_RETURN(type, __res);                                            \
++        LSS_BODY(4, type, name, LSS_SYSCALL_ARG(arg1), LSS_SYSCALL_ARG(arg2), \
++                                LSS_SYSCALL_ARG(arg3), LSS_SYSCALL_ARG(arg4));\
+       }
+     #undef _syscall5
+     #define _syscall5(type,name,type1,arg1,type2,arg2,type3,arg3,type4,arg4,  \
+                       type5,arg5)                                             \
+       type LSS_NAME(name)(type1 arg1, type2 arg2, type3 arg3, type4 arg4,     \
+                           type5 arg5) {                                       \
+-          long __res;                                                         \
+-          __asm__ __volatile__("movq %5,%%r10; movq %6,%%r8; syscall" :       \
+-            "=a" (__res) : "0" (__NR_##name),                                 \
+-            "D" ((long)(arg1)), "S" ((long)(arg2)), "d" ((long)(arg3)),       \
+-            "r" ((long)(arg4)), "r" ((long)(arg5)) :                          \
+-            "r8", "r10", "r11", "rcx", "memory");                             \
+-          LSS_RETURN(type, __res);                                            \
++        LSS_BODY(5, type, name, LSS_SYSCALL_ARG(arg1), LSS_SYSCALL_ARG(arg2), \
++                                LSS_SYSCALL_ARG(arg3), LSS_SYSCALL_ARG(arg4), \
++                                LSS_SYSCALL_ARG(arg5));                       \
+       }
+     #undef _syscall6
+     #define _syscall6(type,name,type1,arg1,type2,arg2,type3,arg3,type4,arg4,  \
+                       type5,arg5,type6,arg6)                                  \
+       type LSS_NAME(name)(type1 arg1, type2 arg2, type3 arg3, type4 arg4,     \
+                           type5 arg5, type6 arg6) {                           \
+-          long __res;                                                         \
+-          __asm__ __volatile__("movq %5,%%r10; movq %6,%%r8; movq %7,%%r9;"   \
+-                               "syscall" :                                    \
+-            "=a" (__res) : "0" (__NR_##name),                                 \
+-            "D" ((long)(arg1)), "S" ((long)(arg2)), "d" ((long)(arg3)),       \
+-            "r" ((long)(arg4)), "r" ((long)(arg5)), "r" ((long)(arg6)) :      \
+-            "r8", "r9", "r10", "r11", "rcx", "memory");                       \
+-          LSS_RETURN(type, __res);                                            \
++        LSS_BODY(6, type, name, LSS_SYSCALL_ARG(arg1), LSS_SYSCALL_ARG(arg2), \
++                                LSS_SYSCALL_ARG(arg3), LSS_SYSCALL_ARG(arg4), \
++                                LSS_SYSCALL_ARG(arg5), LSS_SYSCALL_ARG(arg6));\
+       }
+     LSS_INLINE int LSS_NAME(clone)(int (*fn)(void *), void *child_stack,
+                                    int flags, void *arg, int *parent_tidptr,
+                                    void *newtls, int *child_tidptr) {
+-      long __res;
++      long long __res;
+       {
+         __asm__ __volatile__(/* if (fn == NULL)
+                               *   return -EINVAL;
+@@ -1145,8 +1214,13 @@
+                            "1:\n"
+                              : "=a" (__res)
+                              : "0"(-EINVAL), "i"(__NR_clone), "i"(__NR_exit),
+-                               "r"(fn), "S"(child_stack), "D"(flags), "r"(arg),
+-                               "d"(parent_tidptr), "g"(newtls), "g"(child_tidptr)
++                               "r"(LSS_SYSCALL_ARG(fn)),
++                               "S"(LSS_SYSCALL_ARG(child_stack)),
++                               "D"(LSS_SYSCALL_ARG(flags)),
++                               "r"(LSS_SYSCALL_ARG(arg)),
++                               "d"(LSS_SYSCALL_ARG(parent_tidptr)),
++                               "r"(LSS_SYSCALL_ARG(newtls)),
++                               "r"(LSS_SYSCALL_ARG(child_tidptr))
+                              : "rsp", "memory", "r8", "r10", "r11", "rcx");
+       }
+       LSS_RETURN(int, __res);
+@@ -1159,7 +1233,7 @@
+        * Unfortunately, we cannot just reference the glibc version of this
+        * function, as glibc goes out of its way to make it inaccessible.
+        */
+-      void (*res)(void);
++      long long res;
+       __asm__ __volatile__("call   2f\n"
+                          "0:.align 16\n"
+                          "1:movq   %1,%%rax\n"
+@@ -1168,7 +1242,7 @@
+                            "addq   $(1b-0b),%0\n"
+                            : "=a" (res)
+                            : "i"  (__NR_rt_sigreturn));
+-      return res;
++      return (void (*)(void))(uintptr_t)res;
+     }
+   #elif defined(__arm__)
+     /* Most definitions of _syscallX() neglect to mark "memory" as being
+@@ -1797,8 +1871,16 @@
+   LSS_INLINE _syscall0(pid_t,   _gettid)
+   LSS_INLINE _syscall2(int,     kill,            pid_t,       p,
+                        int,            s)
+-  LSS_INLINE _syscall3(off_t,   lseek,           int,         f,
+-                       off_t,          o, int,    w)
++  #if defined(__x86_64__)
++    /* Need to make sure off_t isn't truncated to 32-bits under x32.  */
++    LSS_INLINE off_t LSS_NAME(lseek)(int f, off_t o, int w) {
++      _LSS_BODY(3, off_t, lseek, off_t, LSS_SYSCALL_ARG(f), (uint64_t)(o),
++                                        LSS_SYSCALL_ARG(w));
++    }
++  #else
++    LSS_INLINE _syscall3(off_t,   lseek,           int,         f,
++                         off_t,          o, int,    w)
++  #endif
+   LSS_INLINE _syscall2(int,     munmap,          void*,       s,
+                        size_t,         l)
+   LSS_INLINE _syscall5(void*,   _mremap,         void*,       o,
+@@ -1835,10 +1917,13 @@
+                          int,                     t, int,       p)
+   #endif
+   #if defined(__x86_64__)
+-    LSS_INLINE _syscall6(void*, mmap,              void*, s,
+-                         size_t,                   l, int,               p,
+-                         int,                      f, int,               d,
+-                         __off64_t,                o)
++    /* Need to make sure __off64_t isn't truncated to 32-bits under x32.  */
++    LSS_INLINE void* LSS_NAME(mmap)(void *s, size_t l, int p, int f, int d,
++                                    __off64_t o) {
++      LSS_BODY(6, void*, mmap, LSS_SYSCALL_ARG(s), LSS_SYSCALL_ARG(l),
++                               LSS_SYSCALL_ARG(p), LSS_SYSCALL_ARG(f),
++                               LSS_SYSCALL_ARG(d), (uint64_t)(o));
++    }
+ 
+     LSS_INLINE int LSS_NAME(sigaction)(int signum,
+                                        const struct kernel_sigaction *act,
+Only in gperftools-2.0/src/base: linux_syscall_support.h.svn-r190
+Only in gperftools-2.0/src/base: linuxthreads.cc.svn-r190
+diff -urP gperftools-2.0/src/base/spinlock.h gperftools-2.0-svn218/src/base/spinlock.h
+--- gperftools-2.0/src/base/spinlock.h	2012-02-02 16:36:23.000000000 -0500
++++ gperftools-2.0-svn218/src/base/spinlock.h	2013-06-04 10:16:58.374841694 -0400
+@@ -31,11 +31,6 @@
+  * Author: Sanjay Ghemawat
+  */
+ 
+-//
+-// Fast spinlocks (at least on x86, a lock/unlock pair is approximately
+-// half the cost of a Mutex because the unlock just does a store instead
+-// of a compare-and-swap which is expensive).
+-
+ // SpinLock is async signal safe.
+ // If used within a signal handler, all lock holders
+ // should block the signal even outside the signal handler.
+@@ -95,10 +90,9 @@
+   // TODO(csilvers): uncomment the annotation when we figure out how to
+   //                 support this macro with 0 args (see thread_annotations.h)
+   inline void Unlock() /*UNLOCK_FUNCTION()*/ {
+-    uint64 wait_cycles =
+-        static_cast<uint64>(base::subtle::NoBarrier_Load(&lockword_));
+     ANNOTATE_RWLOCK_RELEASED(this, 1);
+-    base::subtle::Release_Store(&lockword_, kSpinLockFree);
++    uint64 wait_cycles = static_cast<uint64>(
++        base::subtle::Release_AtomicExchange(&lockword_, kSpinLockFree));
+     if (wait_cycles != kSpinLockHeld) {
+       // Collect contentionz profile info, and speed the wakeup of any waiter.
+       // The wait_cycles value indicates how long this thread spent waiting
+Only in gperftools-2.0/src/base: spinlock_internal.cc.svn-r190
+Only in gperftools-2.0/src/base: sysinfo.cc.svn-r190
+diff -urP gperftools-2.0/src/base/sysinfo.h gperftools-2.0-svn218/src/base/sysinfo.h
+--- gperftools-2.0/src/base/sysinfo.h	2012-02-02 16:36:23.000000000 -0500
++++ gperftools-2.0-svn218/src/base/sysinfo.h	2013-06-04 10:16:58.375841694 -0400
+@@ -38,7 +38,7 @@
+ #include <time.h>
+ #if (defined(_WIN32) || defined(__MINGW32__)) && (!defined(__CYGWIN__) && !defined(__CYGWIN32__))
+ #include <windows.h>   // for DWORD
+-#include <TlHelp32.h>  // for CreateToolhelp32Snapshot
++#include <tlhelp32.h>  // for CreateToolhelp32Snapshot
+ #endif
+ #ifdef HAVE_UNISTD_H
+ #include <unistd.h>    // for pid_t
+diff -urP gperftools-2.0/src/central_freelist.h gperftools-2.0-svn218/src/central_freelist.h
+--- gperftools-2.0/src/central_freelist.h	2012-02-02 16:36:23.000000000 -0500
++++ gperftools-2.0-svn218/src/central_freelist.h	2013-06-04 10:16:57.724841684 -0400
+@@ -79,6 +79,16 @@
+   // page full of 5-byte objects would have 2 bytes memory overhead).
+   size_t OverheadBytes();
+ 
++  // Lock/Unlock the internal SpinLock. Used on the pthread_atfork call
++  // to set the lock in a consistent state before the fork.
++  void Lock() {
++    lock_.Lock();
++  }
++
++  void Unlock() {
++    lock_.Unlock();
++  }
++
+  private:
+   // TransferCache is used to cache transfers of
+   // sizemap.num_objects_to_move(size_class) back and forth between
+diff -urP gperftools-2.0/src/common.cc gperftools-2.0-svn218/src/common.cc
+--- gperftools-2.0/src/common.cc	2013-06-04 10:20:21.143844736 -0400
++++ gperftools-2.0-svn218/src/common.cc	2013-06-04 10:16:57.724841684 -0400
+@@ -30,12 +30,32 @@
+ // ---
+ // Author: Sanjay Ghemawat <opensource@google.com>
+ 
++#include <stdlib.h> // for getenv and strtol
+ #include "config.h"
+ #include "common.h"
+ #include "system-alloc.h"
++#include "base/spinlock.h"
+ 
+ namespace tcmalloc {
+ 
++// Define the maximum number of object per classe type to transfer between
++// thread and central caches.
++static int32 FLAGS_tcmalloc_transfer_num_objects;
++
++static const int32 kDefaultTransferNumObjecs = 32768;
++
++// The init function is provided to explicit initialize the variable value
++// from the env. var to avoid C++ global construction that might defer its
++// initialization after a malloc/new call.
++static inline void InitTCMallocTransferNumObjects()
++{
++  if (UNLIKELY(FLAGS_tcmalloc_transfer_num_objects == 0)) {
++    const char *envval = getenv("TCMALLOC_TRANSFER_NUM_OBJ");
++    FLAGS_tcmalloc_transfer_num_objects = !envval ? kDefaultTransferNumObjecs :
++      strtol(envval, NULL, 10);
++  }
++}
++
+ // Note: the following only works for "n"s that fit in 32-bits, but
+ // that is fine since we only use it for small sizes.
+ static inline int LgFloor(size_t n) {
+@@ -90,13 +110,16 @@
+   // - We go to the central freelist too often and we have to acquire
+   //   its lock each time.
+   // This value strikes a balance between the constraints above.
+-  if (num > 32) num = 32;
++  if (num > FLAGS_tcmalloc_transfer_num_objects)
++    num = FLAGS_tcmalloc_transfer_num_objects;
+ 
+   return num;
+ }
+ 
+ // Initialize the mapping arrays
+ void SizeMap::Init() {
++  InitTCMallocTransferNumObjects();
++
+   // Do some sanity checking on add_amount[]/shift_amount[]/class_array[]
+   if (ClassIndex(0) < 0) {
+     Log(kCrash, __FILE__, __LINE__,
+@@ -189,12 +212,56 @@
+ 
+ // Metadata allocator -- keeps stats about how many bytes allocated.
+ static uint64_t metadata_system_bytes_ = 0;
++static const size_t kMetadataAllocChunkSize = 8*1024*1024;
++static const size_t kMetadataBigAllocThreshold = kMetadataAllocChunkSize / 8;
++// usually malloc uses larger alignments, but because metadata cannot
++// have and fancy simd types, aligning on pointer size seems fine
++static const size_t kMetadataAllignment = sizeof(void *);
++
++static char *metadata_chunk_alloc_;
++static size_t metadata_chunk_avail_;
++
++static SpinLock metadata_alloc_lock(SpinLock::LINKER_INITIALIZED);
++
+ void* MetaDataAlloc(size_t bytes) {
+-  void* result = TCMalloc_SystemAlloc(bytes, NULL);
+-  if (result != NULL) {
+-    metadata_system_bytes_ += bytes;
++  if (bytes >= kMetadataAllocChunkSize) {
++    void *rv = TCMalloc_SystemAlloc(bytes,
++                                    NULL, kMetadataAllignment);
++    if (rv != NULL) {
++      metadata_system_bytes_ += bytes;
++    }
++    return rv;
+   }
+-  return result;
++
++  SpinLockHolder h(&metadata_alloc_lock);
++
++  // the following works by essentially turning address to integer of
++  // log_2 kMetadataAllignment size and negating it. I.e. negated
++  // value + original value gets 0 and that's what we want modulo
++  // kMetadataAllignment. Note, we negate before masking higher bits
++  // off, otherwise we'd have to mask them off after negation anyways.
++  intptr_t alignment = -reinterpret_cast<intptr_t>(metadata_chunk_alloc_) & (kMetadataAllignment-1);
++
++  if (metadata_chunk_avail_ < bytes + alignment) {
++    size_t real_size;
++    void *ptr = TCMalloc_SystemAlloc(kMetadataAllocChunkSize,
++                                     &real_size, kMetadataAllignment);
++    if (ptr == NULL) {
++      return NULL;
++    }
++
++    metadata_chunk_alloc_ = static_cast<char *>(ptr);
++    metadata_chunk_avail_ = real_size;
++
++    alignment = 0;
++  }
++
++  void *rv = static_cast<void *>(metadata_chunk_alloc_ + alignment);
++  bytes += alignment;
++  metadata_chunk_alloc_ += bytes;
++  metadata_chunk_avail_ -= bytes;
++  metadata_system_bytes_ += bytes;
++  return rv;
+ }
+ 
+ uint64_t metadata_system_bytes() { return metadata_system_bytes_; }
+Only in gperftools-2.0/src: common.cc.svn-r190
+diff -urP gperftools-2.0/src/common.h gperftools-2.0-svn218/src/common.h
+--- gperftools-2.0/src/common.h	2013-06-04 10:20:21.143844736 -0400
++++ gperftools-2.0-svn218/src/common.h	2013-06-04 10:16:58.382841694 -0400
+@@ -80,7 +80,7 @@
+ static const size_t kMinAlign   = 16;
+ #elif defined(TCMALLOC_ALIGN_8BYTES)
+ static const size_t kPageShift  = 13;
+-static const size_t kNumClasses = 93;
++static const size_t kNumClasses = 95;
+ // Unless we force to use 8 bytes alignment we use an alignment of
+ // at least 16 bytes to statisfy requirements for some SSE types.
+ // Keep in mind when using the 16 bytes alignment you can have a space
+@@ -88,7 +88,7 @@
+ static const size_t kMinAlign   = 8;
+ #else
+ static const size_t kPageShift  = 13;
+-static const size_t kNumClasses = 86;
++static const size_t kNumClasses = 88;
+ static const size_t kMinAlign   = 16;
+ #endif
+ static const size_t kMaxThreadCacheSize = 4 << 20;
+Only in gperftools-2.0/src: common.h.svn-r190
+diff -urP gperftools-2.0/src/config.h.in gperftools-2.0-svn218/src/config.h.in
+--- gperftools-2.0/src/config.h.in	2013-06-04 10:20:21.143844736 -0400
++++ gperftools-2.0-svn218/src/config.h.in	2013-06-04 10:16:57.816841685 -0400
+@@ -56,6 +56,9 @@
+ /* Define to 1 if you have the <features.h> header file. */
+ #undef HAVE_FEATURES_H
+ 
++/* Define to 1 if you have the `fork' function. */
++#undef HAVE_FORK
++
+ /* Define to 1 if you have the `geteuid' function. */
+ #undef HAVE_GETEUID
+ 
+Only in gperftools-2.0/src: config.h.in.svn-r190
+Only in gperftools-2.0/src: debugallocation.cc.svn-r190
+Only in gperftools-2.0/src: getpc.h.svn-r190
+Only in gperftools-2.0/src/gperftools: malloc_extension.h.svn-r190
+Only in gperftools-2.0/src/gperftools: tcmalloc.h.in.svn-r190
+Only in gperftools-2.0/src: heap-checker.cc.svn-r190
+Only in gperftools-2.0/src: heap-profiler.cc.svn-r190
+Only in gperftools-2.0/src: heap-profile-table.cc.svn-r190
+Only in gperftools-2.0/src: malloc_extension.cc.svn-r190
+Only in gperftools-2.0/src: malloc_hook-inl.h.svn-r190
+Only in gperftools-2.0/src: memory_region_map.cc.svn-r190
+diff -urP gperftools-2.0/src/page_heap.cc gperftools-2.0-svn218/src/page_heap.cc
+--- gperftools-2.0/src/page_heap.cc	2013-06-04 10:20:21.145844736 -0400
++++ gperftools-2.0-svn218/src/page_heap.cc	2013-06-04 10:16:58.070841689 -0400
+@@ -108,6 +108,8 @@
+   return AllocLarge(n);  // May be NULL
+ }
+ 
++static const size_t kForcedCoalesceInterval = 128*1024*1024;
++
+ Span* PageHeap::New(Length n) {
+   ASSERT(Check());
+   ASSERT(n > 0);
+@@ -116,6 +118,38 @@
+   if (result != NULL)
+     return result;
+ 
++  if (stats_.free_bytes != 0 && stats_.unmapped_bytes != 0
++      && stats_.free_bytes + stats_.unmapped_bytes >= stats_.system_bytes / 4
++      && (stats_.system_bytes / kForcedCoalesceInterval
++          != (stats_.system_bytes + (n << kPageShift)) / kForcedCoalesceInterval)) {
++    // We're about to grow heap, but there are lots of free pages.
++    // tcmalloc's design decision to keep unmapped and free spans
++    // separately and never coalesce them means that sometimes there
++    // can be free pages span of sufficient size, but it consists of
++    // "segments" of different type so page heap search cannot find
++    // it. In order to prevent growing heap and wasting memory in such
++    // case we're going to unmap all free pages. So that all free
++    // spans are maximally coalesced.
++    //
++    // We're also limiting 'rate' of going into this path to be at
++    // most once per 128 megs of heap growth. Otherwise programs that
++    // grow heap frequently (and that means by small amount) could be
++    // penalized with higher count of minor page faults.
++    //
++    // See also large_heap_fragmentation_unittest.cc and
++    // https://code.google.com/p/gperftools/issues/detail?id=368
++    ReleaseAtLeastNPages(static_cast<Length>(0x7fffffff));
++
++    // then try again. If we are forced to grow heap because of large
++    // spans fragmentation and not because of problem described above,
++    // then at the very least we've just unmapped free but
++    // insufficiently big large spans back to OS. So in case of really
++    // unlucky memory fragmentation we'll be consuming virtual address
++    // space, but not real memory
++    result = SearchFreeAndLargeLists(n);
++    if (result != NULL) return result;
++  }
++
+   // Grow the heap and try again.
+   if (!GrowHeap(n)) {
+     ASSERT(Check());
+Only in gperftools-2.0/src: page_heap.cc.svn-r190
+Only in gperftools-2.0/src: page_heap.h.svn-r190
+Only in gperftools-2.0/src: pprof.svn-r190
+Only in gperftools-2.0/src: profiler.cc.svn-r190
+diff -urP gperftools-2.0/src/static_vars.cc gperftools-2.0-svn218/src/static_vars.cc
+--- gperftools-2.0/src/static_vars.cc	2012-02-02 16:36:23.000000000 -0500
++++ gperftools-2.0-svn218/src/static_vars.cc	2013-06-04 10:16:57.817841685 -0400
+@@ -39,6 +39,39 @@
+ 
+ namespace tcmalloc {
+ 
++#if defined(HAVE_FORK) && defined(HAVE_PTHREAD)
++// These following two functions are registered via pthread_atfork to make
++// sure the central_cache locks remain in a consisten state in the forked
++// version of the thread.
++
++static
++void CentralCacheLockAll()
++{
++  Static::pageheap_lock()->Lock();
++  for (int i = 0; i < kNumClasses; ++i)
++    Static::central_cache()[i].Lock();
++}
++
++static
++void CentralCacheUnlockAll()
++{
++  for (int i = 0; i < kNumClasses; ++i)
++    Static::central_cache()[i].Unlock();
++  Static::pageheap_lock()->Unlock();
++}
++#endif
++
++static inline
++void SetupAtForkLocksHandler()
++{
++#if defined(HAVE_FORK) && defined(HAVE_PTHREAD)
++  pthread_atfork(CentralCacheLockAll,    // parent calls before fork
++                 CentralCacheUnlockAll,  // parent calls after fork
++                 CentralCacheUnlockAll); // child calls after fork
++#endif
++}
++
++
+ SpinLock Static::pageheap_lock_(SpinLock::LINKER_INITIALIZED);
+ SizeMap Static::sizemap_;
+ CentralFreeListPadded Static::central_cache_[kNumClasses];
+@@ -49,6 +82,7 @@
+ StackTrace* Static::growth_stacks_ = NULL;
+ PageHeap* Static::pageheap_ = NULL;
+ 
++
+ void Static::InitStaticVars() {
+   sizemap_.Init();
+   span_allocator_.Init();
+@@ -61,6 +95,8 @@
+   for (int i = 0; i < kNumClasses; ++i) {
+     central_cache_[i].Init(i);
+   }
++  SetupAtForkLocksHandler();
++
+   // It's important to have PageHeap allocated, not in static storage,
+   // so that HeapLeakChecker does not consider all the byte patterns stored
+   // in is caches as pointers that are sources of heap object liveness,
+Only in gperftools-2.0/src: static_vars.h.svn-r190
+Only in gperftools-2.0/src: symbolize.cc.svn-r190
+Only in gperftools-2.0/src: system-alloc.cc.svn-r190
+Only in gperftools-2.0/src: system-alloc.h.svn-r190
+Only in gperftools-2.0/src: tcmalloc.cc.svn-r190
+diff -urP gperftools-2.0/src/tests/atomicops_unittest.cc gperftools-2.0-svn218/src/tests/atomicops_unittest.cc
+--- gperftools-2.0/src/tests/atomicops_unittest.cc	2012-02-02 16:36:23.000000000 -0500
++++ gperftools-2.0-svn218/src/tests/atomicops_unittest.cc	2013-06-04 10:16:58.072841689 -0400
+@@ -38,13 +38,14 @@
+ #define GG_ULONGLONG(x)  static_cast<uint64>(x)
+ 
+ template <class AtomicType>
+-static void TestAtomicIncrement() {
++static void TestAtomicIncrement(AtomicType (*atomic_increment_func)
++                                (volatile AtomicType*, AtomicType)) {
+   // For now, we just test single threaded execution
+ 
+-  // use a guard value to make sure the NoBarrier_AtomicIncrement doesn't go
++  // use a guard value to make sure the atomic_increment_func doesn't go
+   // outside the expected address bounds.  This is in particular to
+   // test that some future change to the asm code doesn't cause the
+-  // 32-bit NoBarrier_AtomicIncrement doesn't do the wrong thing on 64-bit
++  // 32-bit atomic_increment_func doesn't do the wrong thing on 64-bit
+   // machines.
+   struct {
+     AtomicType prev_word;
+@@ -60,47 +61,47 @@
+   s.count = 0;
+   s.next_word = next_word_value;
+ 
+-  ASSERT_EQ(1, base::subtle::NoBarrier_AtomicIncrement(&s.count, 1));
++  ASSERT_EQ(1, (*atomic_increment_func)(&s.count, 1));
+   ASSERT_EQ(1, s.count);
+   ASSERT_EQ(prev_word_value, s.prev_word);
+   ASSERT_EQ(next_word_value, s.next_word);
+ 
+-  ASSERT_EQ(3, base::subtle::NoBarrier_AtomicIncrement(&s.count, 2));
++  ASSERT_EQ(3, (*atomic_increment_func)(&s.count, 2));
+   ASSERT_EQ(3, s.count);
+   ASSERT_EQ(prev_word_value, s.prev_word);
+   ASSERT_EQ(next_word_value, s.next_word);
+ 
+-  ASSERT_EQ(6, base::subtle::NoBarrier_AtomicIncrement(&s.count, 3));
++  ASSERT_EQ(6, (*atomic_increment_func)(&s.count, 3));
+   ASSERT_EQ(6, s.count);
+   ASSERT_EQ(prev_word_value, s.prev_word);
+   ASSERT_EQ(next_word_value, s.next_word);
+ 
+-  ASSERT_EQ(3, base::subtle::NoBarrier_AtomicIncrement(&s.count, -3));
++  ASSERT_EQ(3, (*atomic_increment_func)(&s.count, -3));
+   ASSERT_EQ(3, s.count);
+   ASSERT_EQ(prev_word_value, s.prev_word);
+   ASSERT_EQ(next_word_value, s.next_word);
+ 
+-  ASSERT_EQ(1, base::subtle::NoBarrier_AtomicIncrement(&s.count, -2));
++  ASSERT_EQ(1, (*atomic_increment_func)(&s.count, -2));
+   ASSERT_EQ(1, s.count);
+   ASSERT_EQ(prev_word_value, s.prev_word);
+   ASSERT_EQ(next_word_value, s.next_word);
+ 
+-  ASSERT_EQ(0, base::subtle::NoBarrier_AtomicIncrement(&s.count, -1));
++  ASSERT_EQ(0, (*atomic_increment_func)(&s.count, -1));
+   ASSERT_EQ(0, s.count);
+   ASSERT_EQ(prev_word_value, s.prev_word);
+   ASSERT_EQ(next_word_value, s.next_word);
+ 
+-  ASSERT_EQ(-1, base::subtle::NoBarrier_AtomicIncrement(&s.count, -1));
++  ASSERT_EQ(-1, (*atomic_increment_func)(&s.count, -1));
+   ASSERT_EQ(-1, s.count);
+   ASSERT_EQ(prev_word_value, s.prev_word);
+   ASSERT_EQ(next_word_value, s.next_word);
+ 
+-  ASSERT_EQ(-5, base::subtle::NoBarrier_AtomicIncrement(&s.count, -4));
++  ASSERT_EQ(-5, (*atomic_increment_func)(&s.count, -4));
+   ASSERT_EQ(-5, s.count);
+   ASSERT_EQ(prev_word_value, s.prev_word);
+   ASSERT_EQ(next_word_value, s.next_word);
+ 
+-  ASSERT_EQ(0, base::subtle::NoBarrier_AtomicIncrement(&s.count, 5));
++  ASSERT_EQ(0, (*atomic_increment_func)(&s.count, 5));
+   ASSERT_EQ(0, s.count);
+   ASSERT_EQ(prev_word_value, s.prev_word);
+   ASSERT_EQ(next_word_value, s.next_word);
+@@ -111,9 +112,10 @@
+ 
+ 
+ template <class AtomicType>
+-static void TestCompareAndSwap() {
++static void TestCompareAndSwap(AtomicType (*compare_and_swap_func)
++                               (volatile AtomicType*, AtomicType, AtomicType)) {
+   AtomicType value = 0;
+-  AtomicType prev = base::subtle::NoBarrier_CompareAndSwap(&value, 0, 1);
++  AtomicType prev = (*compare_and_swap_func)(&value, 0, 1);
+   ASSERT_EQ(1, value);
+   ASSERT_EQ(0, prev);
+ 
+@@ -122,21 +124,22 @@
+   const AtomicType k_test_val = (GG_ULONGLONG(1) <<
+                                  (NUM_BITS(AtomicType) - 2)) + 11;
+   value = k_test_val;
+-  prev = base::subtle::NoBarrier_CompareAndSwap(&value, 0, 5);
++  prev = (*compare_and_swap_func)(&value, 0, 5);
+   ASSERT_EQ(k_test_val, value);
+   ASSERT_EQ(k_test_val, prev);
+ 
+   value = k_test_val;
+-  prev = base::subtle::NoBarrier_CompareAndSwap(&value, k_test_val, 5);
++  prev = (*compare_and_swap_func)(&value, k_test_val, 5);
+   ASSERT_EQ(5, value);
+   ASSERT_EQ(k_test_val, prev);
+ }
+ 
+ 
+ template <class AtomicType>
+-static void TestAtomicExchange() {
++static void TestAtomicExchange(AtomicType (*atomic_exchange_func)
++                               (volatile AtomicType*, AtomicType)) {
+   AtomicType value = 0;
+-  AtomicType new_value = base::subtle::NoBarrier_AtomicExchange(&value, 1);
++  AtomicType new_value = (*atomic_exchange_func)(&value, 1);
+   ASSERT_EQ(1, value);
+   ASSERT_EQ(0, new_value);
+ 
+@@ -145,28 +148,29 @@
+   const AtomicType k_test_val = (GG_ULONGLONG(1) <<
+                                  (NUM_BITS(AtomicType) - 2)) + 11;
+   value = k_test_val;
+-  new_value = base::subtle::NoBarrier_AtomicExchange(&value, k_test_val);
++  new_value = (*atomic_exchange_func)(&value, k_test_val);
+   ASSERT_EQ(k_test_val, value);
+   ASSERT_EQ(k_test_val, new_value);
+ 
+   value = k_test_val;
+-  new_value = base::subtle::NoBarrier_AtomicExchange(&value, 5);
++  new_value = (*atomic_exchange_func)(&value, 5);
+   ASSERT_EQ(5, value);
+   ASSERT_EQ(k_test_val, new_value);
+ }
+ 
+ 
+ template <class AtomicType>
+-static void TestAtomicIncrementBounds() {
++static void TestAtomicIncrementBounds(AtomicType (*atomic_increment_func)
++                                      (volatile AtomicType*, AtomicType)) {
+   // Test increment at the half-width boundary of the atomic type.
+   // It is primarily for testing at the 32-bit boundary for 64-bit atomic type.
+   AtomicType test_val = GG_ULONGLONG(1) << (NUM_BITS(AtomicType) / 2);
+   AtomicType value = test_val - 1;
+-  AtomicType new_value = base::subtle::NoBarrier_AtomicIncrement(&value, 1);
++  AtomicType new_value = (*atomic_increment_func)(&value, 1);
+   ASSERT_EQ(test_val, value);
+   ASSERT_EQ(value, new_value);
+ 
+-  base::subtle::NoBarrier_AtomicIncrement(&value, -1);
++  (*atomic_increment_func)(&value, -1);
+   ASSERT_EQ(test_val - 1, value);
+ }
+ 
+@@ -222,16 +226,28 @@
+ 
+ template <class AtomicType>
+ static void TestAtomicOps() {
+-  TestCompareAndSwap<AtomicType>();
+-  TestAtomicExchange<AtomicType>();
+-  TestAtomicIncrementBounds<AtomicType>();
++  TestCompareAndSwap<AtomicType>(base::subtle::NoBarrier_CompareAndSwap);
++  TestCompareAndSwap<AtomicType>(base::subtle::Acquire_CompareAndSwap);
++  TestCompareAndSwap<AtomicType>(base::subtle::Release_CompareAndSwap);
++
++  TestAtomicExchange<AtomicType>(base::subtle::NoBarrier_AtomicExchange);
++  TestAtomicExchange<AtomicType>(base::subtle::Acquire_AtomicExchange);
++  TestAtomicExchange<AtomicType>(base::subtle::Release_AtomicExchange);
++
++  TestAtomicIncrementBounds<AtomicType>(
++      base::subtle::NoBarrier_AtomicIncrement);
++  TestAtomicIncrementBounds<AtomicType>(
++      base::subtle::Barrier_AtomicIncrement);
++
+   TestStore<AtomicType>();
+   TestLoad<AtomicType>();
+ }
+ 
+ int main(int argc, char** argv) {
+-  TestAtomicIncrement<AtomicWord>();
+-  TestAtomicIncrement<Atomic32>();
++  TestAtomicIncrement<AtomicWord>(base::subtle::NoBarrier_AtomicIncrement);
++  TestAtomicIncrement<AtomicWord>(base::subtle::Barrier_AtomicIncrement);
++  TestAtomicIncrement<Atomic32>(base::subtle::NoBarrier_AtomicIncrement);
++  TestAtomicIncrement<Atomic32>(base::subtle::Barrier_AtomicIncrement);
+ 
+   TestAtomicOps<AtomicWord>();
+   TestAtomicOps<Atomic32>();
+@@ -248,8 +264,10 @@
+   // If we ever *do* want to enable this, try adding -msse (or -mmmx?)
+   // to the CXXFLAGS in Makefile.am.
+ #if 0 and defined(BASE_HAS_ATOMIC64)
+-  TestAtomicIncrement<base::subtle::Atomic64>();
+-  TestAtomicOps<base::subtle::Atomic64>();
++  TestAtomicIncrement<base::subtle::Atomic64>(
++      base::subtle::NoBarrier_AtomicIncrement);
++  TestAtomicIncrement<base::subtle::Atomic64>(
++      base::subtle::Barrier_AtomicIncrement);
+ #endif
+ 
+   printf("PASS\n");
+Only in gperftools-2.0/src/tests: getpc_test.cc.svn-r190
+diff -urP gperftools-2.0/src/tests/large_heap_fragmentation_unittest.cc gperftools-2.0-svn218/src/tests/large_heap_fragmentation_unittest.cc
+--- gperftools-2.0/src/tests/large_heap_fragmentation_unittest.cc	1969-12-31 19:00:00.000000000 -0500
++++ gperftools-2.0-svn218/src/tests/large_heap_fragmentation_unittest.cc	2013-06-04 10:16:58.073841689 -0400
+@@ -0,0 +1,62 @@
++// -*- Mode: C++; c-basic-offset: 2; indent-tabs-mode: nil -*-
++// Redistribution and use in source and binary forms, with or without
++// modification, are permitted provided that the following conditions are
++// met:
++//
++//     * Redistributions of source code must retain the above copyright
++// notice, this list of conditions and the following disclaimer.
++//     * Redistributions in binary form must reproduce the above
++// copyright notice, this list of conditions and the following disclaimer
++// in the documentation and/or other materials provided with the
++// distribution.
++//     * Neither the name of Google Inc. nor the names of its
++// contributors may be used to endorse or promote products derived from
++// this software without specific prior written permission.
++//
++// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
++// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
++// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
++// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
++// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
++// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
++// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
++// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++
++// This is a unit test for exercising fragmentation of large (over 1
++// meg) page spans. It makes sure that allocations/releases of
++// increasing memory chunks do not blowup memory
++// usage. See also https://code.google.com/p/gperftools/issues/detail?id=368
++
++
++#include <stddef.h>
++#include <stdlib.h>
++#include <stdio.h>
++
++#include "base/logging.h"
++#include "common.h"
++#include <gperftools/malloc_extension.h>
++
++
++int main (int argc, char** argv) {
++  for (int pass = 1; pass <= 3; pass++) {
++    size_t size = 100*1024*1024;
++    while (size < 500*1024*1024) {
++      void *ptr = malloc(size);
++      free(ptr);
++      size += 20000;
++
++      size_t heap_size = static_cast<size_t>(-1);
++      MallocExtension::instance()->GetNumericProperty("generic.heap_size",
++                                                      &heap_size);
++
++
++      CHECK_LT(heap_size, 1*1024*1024*1024);
++    }
++  }
++
++  printf("PASS\n");
++  return 0;
++}
+diff -urP gperftools-2.0/src/tests/malloc_extension_c_test.c gperftools-2.0-svn218/src/tests/malloc_extension_c_test.c
+--- gperftools-2.0/src/tests/malloc_extension_c_test.c	2012-02-03 14:18:23.000000000 -0500
++++ gperftools-2.0-svn218/src/tests/malloc_extension_c_test.c	2013-06-04 10:16:58.077841689 -0400
+@@ -59,6 +59,16 @@
+   g_delete_hook_calls++;
+ }
+ 
++static
++void *forced_malloc(size_t size)
++{
++  void *rv = malloc(size);
++  if (!rv) {
++    FAIL("malloc is not supposed to fail here");
++  }
++  return rv;
++}
++
+ void TestMallocHook(void) {
+   /* TODO(csilvers): figure out why we get:
+    * E0100 00:00:00.000000  7383 malloc_hook.cc:244] RAW: google_malloc section is missing, thus InHookCaller is broken!
+@@ -78,8 +88,9 @@
+   if (!MallocHook_AddDeleteHook(&TestDeleteHook)) {
+     FAIL("Failed to add delete hook");
+   }
+-  free(malloc(10));
+-  free(malloc(20));
++
++  free(forced_malloc(10));
++  free(forced_malloc(20));
+   if (g_new_hook_calls != 2) {
+     FAIL("Wrong number of calls to the new hook");
+   }
+Only in gperftools-2.0/src/tests: malloc_hook_test.cc.svn-r190
+Only in gperftools-2.0/src/tests: markidle_unittest.cc.svn-r190
+Only in gperftools-2.0/src/tests: page_heap_test.cc.svn-r190
+Only in gperftools-2.0/src/tests: profiler_unittest.sh.svn-r190
+diff -urP gperftools-2.0/src/tests/tcmalloc_unittest.cc gperftools-2.0-svn218/src/tests/tcmalloc_unittest.cc
+--- gperftools-2.0/src/tests/tcmalloc_unittest.cc	2013-06-04 10:20:21.147844736 -0400
++++ gperftools-2.0-svn218/src/tests/tcmalloc_unittest.cc	2013-06-04 10:16:58.073841689 -0400
+@@ -725,7 +725,7 @@
+ // Note the ... in the hook signature: we don't care what arguments
+ // the hook takes.
+ #define MAKE_HOOK_CALLBACK(hook_type)                                   \
+-  static int g_##hook_type##_calls = 0;                                 \
++  static volatile int g_##hook_type##_calls = 0;                                 \
+   static void IncrementCallsTo##hook_type(...) {                        \
+     g_##hook_type##_calls++;                                            \
+   }                                                                     \
+@@ -760,7 +760,7 @@
+     CHECK((p % sizeof(void*)) == 0);
+     CHECK((p % sizeof(double)) == 0);
+ 
+-    // Must have 16-byte (or 8-byte in case of -DTCMALLOC_ALIGN_8BYTES) 
++    // Must have 16-byte (or 8-byte in case of -DTCMALLOC_ALIGN_8BYTES)
+     // alignment for large enough objects
+     if (size >= kMinAlign) {
+       CHECK((p % kMinAlign) == 0);
+Only in gperftools-2.0/src/tests: tcmalloc_unittest.cc.svn-r190
+diff -urP gperftools-2.0/src/tests/tcmalloc_unittest.sh gperftools-2.0-svn218/src/tests/tcmalloc_unittest.sh
+--- gperftools-2.0/src/tests/tcmalloc_unittest.sh	1969-12-31 19:00:00.000000000 -0500
++++ gperftools-2.0-svn218/src/tests/tcmalloc_unittest.sh	2013-06-04 10:16:58.075841689 -0400
+@@ -0,0 +1,68 @@
++#!/bin/sh
++
++# Copyright (c) 2013, Google Inc.
++# All rights reserved.
++#
++# Redistribution and use in source and binary forms, with or without
++# modification, are permitted provided that the following conditions are
++# met:
++#
++#     * Redistributions of source code must retain the above copyright
++# notice, this list of conditions and the following disclaimer.
++#     * Redistributions in binary form must reproduce the above
++# copyright notice, this list of conditions and the following disclaimer
++# in the documentation and/or other materials provided with the
++# distribution.
++#     * Neither the name of Google Inc. nor the names of its
++# contributors may be used to endorse or promote products derived from
++# this software without specific prior written permission.
++#
++# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
++# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
++# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
++# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
++# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
++# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
++# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
++# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++
++# ---
++# Author: Adhemerval Zanella
++#
++# Runs the tcmalloc_unittest with various environment variables.
++# This is necessary because tuning some environment variables
++# (TCMALLOC_TRANSFER_NUM_OBJ for instance) should not change program
++# behavior, just performance.
++
++BINDIR="${BINDIR:-.}"
++TCMALLOC_UNITTEST="${1:-$BINDIR}/tcmalloc_unittest"
++
++TMPDIR=/tmp/tcmalloc_unittest
++rm -rf $TMPDIR || exit 2
++mkdir $TMPDIR || exit 3
++
++# $1: value of tcmalloc_unittest env. var.
++run_check_transfer_num_obj() {
++    [ -n "$1" ] && export TCMALLOC_TRANSFER_NUM_OBJ="$1"
++
++    echo -n "Testing $TCMALLOC_UNITTEST with TCMALLOC_TRANSFER_NUM_OBJ=$1 ... "
++    if $TCMALLOC_UNITTEST > $TMPDIR/output 2>&1; then
++      echo "OK"
++    else
++      echo "FAILED"
++      echo "Output from the failed run:"
++      echo "----"
++      cat $TMPDIR/output
++      echo "----"
++      exit 4
++    fi
++}
++
++run_check_transfer_num_obj ""
++run_check_transfer_num_obj "40"
++run_check_transfer_num_obj "4096"
++
++echo "PASS"
+Only in gperftools-2.0/src: thread_cache.cc.svn-r190
+Only in gperftools-2.0/src: thread_cache.h.svn-r190
+diff -urP gperftools-2.0/src/windows/mingw.h gperftools-2.0-svn218/src/windows/mingw.h
+--- gperftools-2.0/src/windows/mingw.h	2012-02-02 16:36:23.000000000 -0500
++++ gperftools-2.0-svn218/src/windows/mingw.h	2013-06-04 10:16:57.682841683 -0400
+@@ -60,6 +60,8 @@
+ // pretend the pthreads wrapper doesn't exist, even when it does.
+ #undef HAVE_PTHREAD
+ 
++#define HAVE_PID_T
++
+ #include "windows/port.h"
+ 
+ #endif  /* __MINGW32__ */
+diff -urP gperftools-2.0/src/windows/patch_functions.cc gperftools-2.0-svn218/src/windows/patch_functions.cc
+--- gperftools-2.0/src/windows/patch_functions.cc	2012-02-03 14:18:23.000000000 -0500
++++ gperftools-2.0-svn218/src/windows/patch_functions.cc	2013-06-04 10:16:57.683841683 -0400
+@@ -85,7 +85,7 @@
+ #include <windows.h>
+ #include <stdio.h>
+ #include <malloc.h>       // for _msize and _expand
+-#include <Psapi.h>        // for EnumProcessModules, GetModuleInformation, etc.
++#include <psapi.h>        // for EnumProcessModules, GetModuleInformation, etc.
+ #include <set>
+ #include <map>
+ #include <vector>
+Only in gperftools-2.0/src/windows: port.cc.svn-r190
+diff -urP gperftools-2.0/src/windows/port.h gperftools-2.0-svn218/src/windows/port.h
+--- gperftools-2.0/src/windows/port.h	2012-02-02 16:36:23.000000000 -0500
++++ gperftools-2.0-svn218/src/windows/port.h	2013-06-04 10:16:57.683841683 -0400
+@@ -390,7 +390,10 @@
+ 
+ /* ----------------------------------- SYSTEM/PROCESS */
+ 
++#ifndef HAVE_PID_T
+ typedef int pid_t;
++#endif
++
+ #if __STDC__ && !defined(__MINGW32__)
+ inline pid_t getpid(void) { return _getpid(); }
+ #endif
+diff -urP gperftools-2.0/src/windows/preamble_patcher.cc gperftools-2.0-svn218/src/windows/preamble_patcher.cc
+--- gperftools-2.0/src/windows/preamble_patcher.cc	2012-02-02 16:36:23.000000000 -0500
++++ gperftools-2.0-svn218/src/windows/preamble_patcher.cc	2013-06-04 10:16:57.601841682 -0400
+@@ -103,6 +103,7 @@
+       new_target = target + 2 + relative_offset;
+     } else if (target[0] == ASM_JMP32ABS_0 &&
+                target[1] == ASM_JMP32ABS_1) {
++    jmp32rel:
+       // Visual studio seems to sometimes do it this way instead of the
+       // previous way.  Not sure what the rules are, but it was happening
+       // with operator new in some binaries.
+@@ -118,6 +119,18 @@
+         memcpy(&new_target_v, reinterpret_cast<void*>(target + 2), 4);
+       }
+       new_target = reinterpret_cast<unsigned char*>(*new_target_v);
++    } else if (kIs64BitBinary && target[0] == ASM_REXW
++               && target[1] == ASM_JMP32ABS_0
++               && target[2] == ASM_JMP32ABS_1) {
++      // in Visual Studio 2012 we're seeing jump like that:
++      //   rex.W jmpq *0x11d019(%rip)
++      //
++      // according to docs I have, rex prefix is actually unneeded and
++      // can be ignored. I.e. docs say for jumps like that operand
++      // already defaults to 64-bit. But clearly it breaks abs. jump
++      // detection above and we just skip rex
++      target++;
++      goto jmp32rel;
+     } else {
+       break;
+     }
+@@ -535,6 +548,12 @@
+   return (*(target) & 0x70) == 0x70 && instruction_size == 2;
+ }
+ 
++bool PreamblePatcher::IsShortJump(
++    unsigned char* target,
++    unsigned int instruction_size) {
++  return target[0] == 0xeb && instruction_size == 2;
++}
++
+ bool PreamblePatcher::IsNearConditionalJump(
+     unsigned char* target,
+     unsigned int instruction_size) {
+@@ -575,7 +594,9 @@
+     unsigned char* target,
+     unsigned int* target_bytes,
+     unsigned int target_size) {
+-  unsigned char* original_jump_dest = (source + 2) + source[1];
++  // note: rel8 offset is signed. Thus we need to ask for signed char
++  // to negative offsets right
++  unsigned char* original_jump_dest = (source + 2) + static_cast<signed char>(source[1]);
+   unsigned char* stub_jump_from = target + 6;
+   __int64 fixup_jump_offset = original_jump_dest - stub_jump_from;
+   if (fixup_jump_offset > INT_MAX || fixup_jump_offset < INT_MIN) {
+@@ -597,6 +618,36 @@
+            reinterpret_cast<void*>(&fixup_jump_offset), 4);
+   }
+ 
++  return SIDESTEP_SUCCESS;
++}
++
++SideStepError PreamblePatcher::PatchShortJump(
++    unsigned char* source,
++    unsigned int instruction_size,
++    unsigned char* target,
++    unsigned int* target_bytes,
++    unsigned int target_size) {
++  // note: rel8 offset is _signed_. Thus we need signed char here.
++  unsigned char* original_jump_dest = (source + 2) + static_cast<signed char>(source[1]);
++  unsigned char* stub_jump_from = target + 5;
++  __int64 fixup_jump_offset = original_jump_dest - stub_jump_from;
++  if (fixup_jump_offset > INT_MAX || fixup_jump_offset < INT_MIN) {
++    SIDESTEP_ASSERT(false &&
++                    "Unable to fix up short jump because target"
++                    " is too far away.");
++    return SIDESTEP_JUMP_INSTRUCTION;
++  }
++
++  *target_bytes = 5;
++  if (target_size > *target_bytes) {
++    // Convert the short jump to a near jump.
++    //
++    // e9 xx xx xx xx = jmp rel32off
++    target[0] = 0xe9;
++    memcpy(reinterpret_cast<void*>(target + 1),
++           reinterpret_cast<void*>(&fixup_jump_offset), 4);
++  }
++
+   return SIDESTEP_SUCCESS;
+ }
+ 
+diff -urP gperftools-2.0/src/windows/preamble_patcher.h gperftools-2.0-svn218/src/windows/preamble_patcher.h
+--- gperftools-2.0/src/windows/preamble_patcher.h	2012-02-02 16:36:23.000000000 -0500
++++ gperftools-2.0-svn218/src/windows/preamble_patcher.h	2013-06-04 10:16:57.601841682 -0400
+@@ -467,6 +467,8 @@
+   static bool IsShortConditionalJump(unsigned char* target,
+                                      unsigned int instruction_size);
+ 
++  static bool IsShortJump(unsigned char *target, unsigned int instruction_size);
++
+   // Helper routine that determines if a target instruction is a near
+   // conditional jump.
+   //
+@@ -547,6 +549,12 @@
+                                                  unsigned int* target_bytes,
+                                                  unsigned int target_size);
+ 
++  static SideStepError PatchShortJump(unsigned char* source,
++                                      unsigned int instruction_size,
++                                      unsigned char* target,
++                                      unsigned int* target_bytes,
++                                      unsigned int target_size);
++
+   // Helper routine that converts an instruction that will convert various
+   // jump-like instructions to corresponding instructions in the target buffer.
+   // What this routine does is fix up the relative offsets contained in jump
+diff -urP gperftools-2.0/src/windows/preamble_patcher_with_stub.cc gperftools-2.0-svn218/src/windows/preamble_patcher_with_stub.cc
+--- gperftools-2.0/src/windows/preamble_patcher_with_stub.cc	2012-02-02 16:36:23.000000000 -0500
++++ gperftools-2.0-svn218/src/windows/preamble_patcher_with_stub.cc	2013-06-04 10:16:57.682841683 -0400
+@@ -150,6 +150,11 @@
+                                              preamble_stub + stub_bytes,
+                                              &jump_bytes,
+                                              stub_size - stub_bytes);
++      } else if (IsShortJump(target + preamble_bytes, cur_bytes)) {
++        jump_ret = PatchShortJump(target + preamble_bytes, cur_bytes,
++                                  preamble_stub + stub_bytes,
++                                  &jump_bytes,
++                                  stub_size - stub_bytes);
+       } else if (IsNearConditionalJump(target + preamble_bytes, cur_bytes) ||
+                  IsNearRelativeJump(target + preamble_bytes, cur_bytes) ||
+                  IsNearAbsoluteCall(target + preamble_bytes, cur_bytes) ||
+Only in gperftools-2.0/src/windows: TODO.svn-r190

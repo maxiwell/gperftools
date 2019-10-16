@@ -1,0 +1,13 @@
+diff -up gperftools-2.6.1/src/stacktrace_powerpc-linux-inl.h.ucontextfix gperftools-2.6.1/src/stacktrace_powerpc-linux-inl.h
+--- gperftools-2.6.1/src/stacktrace_powerpc-linux-inl.h.ucontextfix	2017-07-17 15:57:42.066001611 -0400
++++ gperftools-2.6.1/src/stacktrace_powerpc-linux-inl.h	2017-07-17 15:58:04.610427563 -0400
+@@ -53,7 +53,8 @@
+ #elif defined(HAVE_UCONTEXT_H)
+ #include <ucontext.h>  // for ucontext_t
+ #endif
+-typedef ucontext ucontext_t;
++// no ucontext typedef on ppc64
++// typedef ucontext ucontext_t;
+ 
+ // PowerPC64 Little Endian follows BE wrt. backchain, condition register,
+ // and LR save area, so no need to adjust the reading struct.
