@@ -1,10 +1,11 @@
-diff -up ./configure.ac.dynload ./configure.ac
---- ./configure.ac.dynload	2017-08-24 15:23:01.126622099 -0400
-+++ ./configure.ac	2017-08-24 15:29:46.332132222 -0400
-@@ -614,6 +614,16 @@ AC_COMPILE_IFELSE(
-          AC_MSG_RESULT([yes])],
-         [AC_MSG_RESULT([no])])
+diff -up gperftools-2.7.90/configure.ac.dynload gperftools-2.7.90/configure.ac
+--- gperftools-2.7.90/configure.ac.dynload	2020-03-09 10:55:12.212374186 -0400
++++ gperftools-2.7.90/configure.ac	2020-03-09 10:57:25.081830867 -0400
+@@ -665,6 +665,17 @@ AS_IF([test "x$enable_aggressive_decommi
+                  1,
+                  [enable aggressive decommit by default])])
  
++# Enable generic dynamic TLS model by default
 +default_enable_generic_dynamic_tls=yes
 +AC_ARG_ENABLE([general-dynamic-tls],
 +              [AS_HELP_STRING([--disable-general-dynamic-tls],
@@ -18,9 +19,9 @@ diff -up ./configure.ac.dynload ./configure.ac
  # Write generated configuration file
  AC_CONFIG_FILES([Makefile
                   src/gperftools/tcmalloc.h src/windows/gperftools/tcmalloc.h])
-diff -up ./src/base/basictypes.h.dynload ./src/base/basictypes.h
---- ./src/base/basictypes.h.dynload	2017-08-24 15:30:30.210996293 -0400
-+++ ./src/base/basictypes.h	2017-08-24 15:31:01.889176214 -0400
+diff -up gperftools-2.7.90/src/base/basictypes.h.dynload gperftools-2.7.90/src/base/basictypes.h
+--- gperftools-2.7.90/src/base/basictypes.h.dynload	2020-02-23 15:15:47.000000000 -0500
++++ gperftools-2.7.90/src/base/basictypes.h	2020-03-09 10:55:12.212374186 -0400
 @@ -200,7 +200,7 @@ struct CompileAssert {
  # define ATTRIBUTE_UNUSED
  #endif
